@@ -1,12 +1,18 @@
-// utils/mechanics.ts
-
 const MAX_STRAIN = 100;
 const STRAIN_DECAY_RATE = 2.5; // strain lost per second
 const STRAIN_PER_KEYSTROKE = 1.2;
+const BASE_SPARK_CHANCE_PER_SECOND = 0.0045;
 
 export const gameMechanics = {
-  getNewStrain: (currentStrain: number): number => {
-    return Math.min(MAX_STRAIN, currentStrain + STRAIN_PER_KEYSTROKE);
+  maxStrain: MAX_STRAIN,
+  strainPerKeystroke: STRAIN_PER_KEYSTROKE,
+  strainDecayRate: STRAIN_DECAY_RATE,
+
+  getNewStrain: (currentStrain: number, multiplier = 1): number => {
+    return Math.min(
+      MAX_STRAIN,
+      currentStrain + STRAIN_PER_KEYSTROKE * Math.max(0.05, multiplier)
+    );
   },
 
   decayStrain: (currentStrain: number, deltaSeconds: number): number => {
@@ -17,19 +23,32 @@ export const gameMechanics = {
     return strainLevel >= MAX_STRAIN;
   },
 
-  rollForSpark: (strainLevel: number): boolean => {
-    // Base 0.5% chance per second, scaled up based on how hard you're straining
-    // E.g. at 0 strain, 0.5% chance
-    // At 90 strain, 5% chance
-    const baseChance = 0.005; 
-    const strainMultiplier = 1 + (strainLevel / MAX_STRAIN) * 9; 
-    const chance = baseChance * strainMultiplier;
-    
-    return Math.random() < chance;
+  rollForSpark: (
+    strainLevel: number,
+    deltaSeconds: number,
+    sparkChanceMultiplier = 1
+  ): boolean => {
+    // Time-normalized probability to avoid framerate dependency.
+    const strainMultiplier = 1 + (strainLevel / MAX_STRAIN) * 9;
+    const chancePerSecond =
+      BASE_SPARK_CHANCE_PER_SECOND * strainMultiplier * sparkChanceMultiplier;
+    const safeDelta = Math.max(0, Math.min(2, deltaSeconds));
+    const frameChance = 1 - Math.pow(1 - Math.min(0.95, chancePerSecond), safeDelta);
+    return Math.random() < frameChance;
   },
 
-  getSparkReward: (neuralTokens: number): number => {
-    // Gives 15% of current tokens, or at least 150
-    return Math.max(150, Math.floor(neuralTokens * 0.15));
-  }
+  rollForBonusWord: (deltaSeconds: number): boolean => {
+    const chancePerSecond = 0.035;
+    const safeDelta = Math.max(0, Math.min(2, deltaSeconds));
+    const frameChance = 1 - Math.pow(1 - chancePerSecond, safeDelta);
+    return Math.random() < frameChance;
+  },
+
+  getSparkReward: (
+    neuralTokens: number,
+    rewardMultiplier = 1
+  ): number => {
+    const base = Math.max(150, Math.floor(neuralTokens * 0.15));
+    return Math.max(150, Math.floor(base * rewardMultiplier));
+  },
 };

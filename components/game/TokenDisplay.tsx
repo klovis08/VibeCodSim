@@ -8,6 +8,10 @@ import { formatNumber } from "../../utils/formatNumber";
 export const TokenDisplay: React.FC = () => {
   const neuralTokens = useGameStore((s) => s.neuralTokens);
   const energyDrinks = useGameStore((s) => s.energyDrinks);
+  const locPerSecond = useGameStore((s) => s.locPerSecond);
+  const incomeMultiplier = useGameStore((s) => s.incomeMultiplier);
+  const strainLevel = useGameStore((s) => s.strainLevel);
+  const isBurnedOut = useGameStore((s) => s.isBurnedOut);
 
   return (
     <View className="flex-col gap-2" style={{ flexDirection: 'column', gap: 8 }}>
@@ -21,6 +25,9 @@ export const TokenDisplay: React.FC = () => {
           <Text className="text-[#a0a0a0] text-xs font-mono uppercase tracking-widest mt-0.5" style={{ color: '#a0a0a0', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.5, marginTop: 2 }}>
             Total Generated
           </Text>
+          <Text style={{ color: "#7f7f7f", fontSize: 11, marginTop: 3, fontFamily: "monospace" }}>
+            {formatNumber(locPerSecond)}/sec · x{incomeMultiplier.toFixed(2)}
+          </Text>
         </View>
       </View>
 
@@ -32,6 +39,12 @@ export const TokenDisplay: React.FC = () => {
         />
         <Text className="text-[#39FF14] text-lg font-bold font-mono" style={{ color: '#39FF14', fontSize: 18, fontWeight: 'bold' }}>
           {energyDrinks.toLocaleString()} <Text className="text-[#a0a0a0] text-xs font-mono" style={{ color: '#a0a0a0', fontSize: 12 }}>CANS</Text>
+        </Text>
+      </View>
+
+      <View style={{ marginTop: 2 }}>
+        <Text style={{ color: isBurnedOut ? "#FF073A" : strainLevel > 80 ? "#F3F315" : "#7f7f7f", fontSize: 11, fontFamily: "monospace" }}>
+          {isBurnedOut ? "BURNOUT: cooling down" : `Strain ${Math.floor(strainLevel)}%`}
         </Text>
       </View>
     </View>
