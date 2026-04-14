@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+::selection {
+  background-color: rgba(0, 212, 255, 0.3);
+  color: #e4e4e4;
+}
+
+::-moz-selection {
+  background-color: rgba(0, 212, 255, 0.3);
+  color: #e4e4e4;
+}
+
+body {
+  background: radial-gradient(ellipse at center, #0f0f0f 0%, #080808 70%, #050505 100%);
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -12,12 +32,17 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #333;
+  background: #2a2a2a;
   border-radius: 999px;
+  transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #4a4a4a;
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: #5a5a5a;
 }
 
 ::-webkit-scrollbar-corner {
@@ -26,5 +51,5 @@
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #333 #0a0a0a;
+  scrollbar-color: #2a2a2a #0a0a0a;
 }

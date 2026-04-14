@@ -1,14 +1,13 @@
 /**
- * Formats a large number into a human-readable abbreviated string.
- * Prevents layout overflow in the TokenDisplay and UpgradeCard components.
+ * Formats a number into a human-readable abbreviated string with rounded values.
  *
  * Examples:
+ *   3.7       → "4"
  *   999       → "999"
- *   1500      → "1.50K"
- *   1_200_000 → "1.20M"
- *   1e9       → "1.00B"
- *   1e12      → "1.00T"
- *   1e15      → "1.00Qa"
+ *   1500      → "1.5K"
+ *   1_200_000 → "1.2M"
+ *   1e9       → "1B"
+ *   1e12      → "1T"
  */
 const SUFFIXES: [number, string][] = [
   [1e15, "Qa"],
@@ -25,11 +24,11 @@ export const formatNumber = (n: number): string => {
 
   for (const [threshold, suffix] of SUFFIXES) {
     if (abs >= threshold) {
-      return (n / threshold).toFixed(2) + suffix;
+      const val = n / threshold;
+      const s = val.toFixed(1);
+      return (s.endsWith(".0") ? Math.round(val).toString() : s) + suffix;
     }
   }
 
-  if (abs < 10) return n.toFixed(2);
-  if (abs < 1000) return Number.isInteger(n) ? n.toString() : n.toFixed(1);
-  return Math.floor(n).toString();
+  return Math.round(n).toString();
 };

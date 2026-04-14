@@ -56,6 +56,7 @@ export interface ActiveEvent {
   title: string;
   description: string;
   endsAt: number;
+  duration: number;
 }
 
 interface GameState {
@@ -767,7 +768,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           newStrain = 0;
           newIsBurnedOut = false;
         }
-        newEvent = { id: def.id, title: def.title, description: def.description, endsAt: timestamp + def.duration * 1000 };
+        newEvent = { id: def.id, title: def.title, description: def.description, endsAt: timestamp + def.duration * 1000, duration: def.duration };
         newLastEventTime = timestamp;
       } else if (state.lastEventTime === 0) {
         newLastEventTime = timestamp;

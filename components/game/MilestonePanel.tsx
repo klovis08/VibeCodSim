@@ -2,6 +2,7 @@ import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { MILESTONES, useGameStore } from "../../store/gameStore";
 import { formatNumber } from "../../utils/formatNumber";
+import { T } from "../../constants/theme";
 
 export const MilestonePanel: React.FC = () => {
   const lifetimeTokens = useGameStore((s) => s.lifetimeTokens);
@@ -10,18 +11,16 @@ export const MilestonePanel: React.FC = () => {
   const claimMilestone = useGameStore((s) => s.claimMilestone);
 
   return (
-    <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
-      <Text
-        style={{
-          color: "#39FF14",
-          textTransform: "uppercase",
-          fontSize: 11,
-          fontWeight: "700",
-          letterSpacing: 1.5,
-          marginBottom: 8,
-          fontFamily: "monospace",
-        }}
-      >
+    <View style={{ marginHorizontal: T.space.lg, marginBottom: T.space.lg }}>
+      <Text style={{
+        color: T.accent.green,
+        textTransform: "uppercase",
+        fontSize: T.font.sm,
+        fontWeight: "700",
+        letterSpacing: 1.5,
+        marginBottom: T.space.sm,
+        fontFamily: T.mono,
+      }}>
         Milestones
       </Text>
 
@@ -39,55 +38,84 @@ export const MilestonePanel: React.FC = () => {
           <View
             key={milestone.id}
             style={{
-              borderRadius: 8,
+              borderRadius: T.radius.md,
               borderWidth: 1,
-              borderColor: claimed ? "#2a5331" : canClaim ? "#416846" : "#2b2b2b",
-              backgroundColor: claimed ? "#102014" : "#171717",
-              padding: 12,
-              marginBottom: 8,
+              borderColor: claimed ? "#2a5331" : canClaim ? "#416846" : T.border.subtle,
+              backgroundColor: claimed ? "#102014" : T.bg.surface,
+              padding: T.space.lg,
+              marginBottom: T.space.sm,
             }}
           >
-            <Text style={{ color: claimed ? "#85cf91" : "#d4d4d4", fontWeight: "600", fontSize: 14 }}>
-              {milestone.title}
-            </Text>
-            <Text style={{ color: "#8b8b8b", fontSize: 12, marginTop: 3 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: T.space.sm }}>
+              <View style={{
+                width: 22, height: 22, borderRadius: 11,
+                backgroundColor: claimed ? T.accent.green : canClaim ? `${T.accent.green}44` : T.bg.elevated,
+                alignItems: "center", justifyContent: "center",
+                borderWidth: 1,
+                borderColor: claimed ? T.accent.green : T.border.default,
+              }}>
+                <Text style={{ color: claimed ? "#000" : T.text.muted, fontSize: 11, fontWeight: "bold" }}>
+                  {claimed ? "✓" : ""}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  color: claimed ? "#85cf91" : T.text.primary,
+                  fontWeight: "600", fontSize: T.font.base,
+                  fontFamily: T.mono,
+                  textDecorationLine: claimed ? "line-through" : "none",
+                }}>
+                  {milestone.title}
+                </Text>
+              </View>
+            </View>
+            <Text style={{ color: T.text.secondary, fontSize: T.font.sm, marginTop: T.space.xs, marginLeft: 30 }}>
               {milestone.description}
             </Text>
             {locTarget > 0 && (
-              <Text style={{ color: "#7c7c7c", fontSize: 11, marginTop: 4, fontFamily: "monospace" }}>
+              <Text style={{ color: T.text.muted, fontSize: T.font.xs, marginTop: T.space.xs, fontFamily: T.mono, marginLeft: 30 }}>
                 LoC: {formatNumber(lifetimeTokens)} / {formatNumber(locTarget)}
               </Text>
             )}
             {rebootTarget > 0 && (
-              <Text style={{ color: "#7c7c7c", fontSize: 11, marginTop: 2, fontFamily: "monospace" }}>
+              <Text style={{ color: T.text.muted, fontSize: T.font.xs, marginTop: 2, fontFamily: T.mono, marginLeft: 30 }}>
                 Reboots: {rebootCount} / {rebootTarget}
               </Text>
             )}
-            <Text style={{ color: "#5f7fbd", fontSize: 11, marginTop: 4, fontFamily: "monospace" }}>
-              Reward: +{milestone.rewardTokens ?? 0} LoC · +{milestone.rewardEnergyDrinks ?? 0} cans · +{milestone.rewardArchitecturePoints ?? 0} AP
+            <Text style={{ color: "#5f7fbd", fontSize: T.font.xs, marginTop: T.space.xs, fontFamily: T.mono, marginLeft: 30 }}>
+              +{milestone.rewardTokens ?? 0} LoC · +{milestone.rewardEnergyDrinks ?? 0} cans · +{milestone.rewardArchitecturePoints ?? 0} AP
             </Text>
-            <View style={{ marginTop: 8, height: 6, borderRadius: 999, backgroundColor: "#0f0f0f", borderWidth: 1, borderColor: "#2d2d2d", overflow: "hidden" }}>
-              <View
-                style={{
-                  width: `${Math.floor(blendedProgress * 100)}%`,
-                  height: "100%",
-                  backgroundColor: claimed ? "#3a8f4b" : canClaim ? "#57b26b" : "#37538f",
-                }}
-              />
+
+            <View style={{
+              marginTop: T.space.sm, height: 6, borderRadius: 999,
+              backgroundColor: T.bg.base, overflow: "hidden", marginLeft: 30,
+            }}>
+              <View style={{
+                width: `${Math.floor(blendedProgress * 100)}%`,
+                height: "100%",
+                borderRadius: 999,
+                backgroundColor: claimed ? "#3a8f4b" : canClaim ? T.accent.green : "#37538f",
+              }} />
             </View>
+
             <Pressable
               onPress={() => claimMilestone(milestone.id)}
               disabled={!canClaim}
-              style={{
-                marginTop: 8,
-                borderRadius: 6,
-                paddingVertical: 8,
+              style={({ pressed }) => ({
+                marginTop: T.space.sm,
+                borderRadius: T.radius.sm,
+                paddingVertical: T.space.md,
                 alignItems: "center",
-                backgroundColor: claimed ? "#1d3c23" : canClaim ? "#235838" : "#333",
-              }}
+                backgroundColor: claimed ? "#1d3c23" : canClaim ? "#235838" : T.bg.elevated,
+                opacity: pressed && canClaim ? 0.8 : 1,
+                marginLeft: 30,
+              })}
             >
-              <Text style={{ color: claimed ? "#95d8a2" : canClaim ? "#d9ffe4" : "#8a8a8a", fontSize: 12, fontFamily: "monospace" }}>
-                {claimed ? "Claimed" : canClaim ? "Claim Reward" : "In Progress"}
+              <Text style={{
+                color: claimed ? "#95d8a2" : canClaim ? "#d9ffe4" : T.text.muted,
+                fontSize: T.font.sm, fontFamily: T.mono, fontWeight: "600",
+              }}>
+                {claimed ? "✓ Claimed" : canClaim ? "Claim Reward" : "In Progress"}
               </Text>
             </Pressable>
           </View>

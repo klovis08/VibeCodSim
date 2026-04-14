@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Platform,
   Pressable,
@@ -8,10 +8,10 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  Alert,
+  Animated,
+  Clipboard,
 } from "react-native";
 import { useGameStore, getEnergyTechCost, ACHIEVEMENT_DEFINITIONS } from "../store/gameStore";
-
 import { TokenDisplay } from "../components/game/TokenDisplay";
 import { UpgradeCard } from "../components/game/UpgradeCard";
 import { RebootButton } from "../components/game/RebootButton";
@@ -20,27 +20,31 @@ import { MilestonePanel } from "../components/game/MilestonePanel";
 import { GraphicGamePanel } from "../components/ui/GraphicGamePanel";
 import { WelcomeBackToast } from "../components/ui/WelcomeBackToast";
 import { ProgressToast } from "../components/ui/ProgressToast";
-import { NeonText } from "../components/ui/NeonText";
-import { Battery, Settings } from "lucide-react-native";
+import {
+  Battery, Settings, Package, Layers, Zap, TrendingUp,
+  Monitor, Box, Cpu, Rocket, BarChart3,
+  Flame, Bug, Scissors, Coffee,
+} from "lucide-react-native";
 import { formatNumber } from "../utils/formatNumber";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { T } from "../constants/theme";
 
 type MobileTab = "NODE" | "PACKAGES" | "ADVANCED" | "BOOST" | "PROGRESS";
 type DesktopSubTab = "packages" | "advanced" | "boost" | "progress";
 
-const SUB_TAB_LABELS: { key: DesktopSubTab; label: string }[] = [
-  { key: "packages", label: "Packages" },
-  { key: "advanced", label: "Advanced" },
-  { key: "boost", label: "Boost" },
-  { key: "progress", label: "Progress" },
+const DESKTOP_TABS: { key: DesktopSubTab; label: string; Icon: React.FC<any> }[] = [
+  { key: "packages", label: "Packages", Icon: Package },
+  { key: "advanced", label: "Advanced", Icon: Layers },
+  { key: "boost", label: "Boost", Icon: Zap },
+  { key: "progress", label: "Progress", Icon: TrendingUp },
 ];
 
-const MOBILE_TABS: { key: MobileTab; label: string }[] = [
-  { key: "NODE", label: "Node" },
-  { key: "PACKAGES", label: "Pkgs" },
-  { key: "ADVANCED", label: "Adv" },
-  { key: "BOOST", label: "Boost" },
-  { key: "PROGRESS", label: "Prog" },
+const MOBILE_TABS: { key: MobileTab; label: string; Icon: React.FC<any> }[] = [
+  { key: "NODE", label: "Node", Icon: Monitor },
+  { key: "PACKAGES", label: "Pkgs", Icon: Box },
+  { key: "ADVANCED", label: "Adv", Icon: Cpu },
+  { key: "BOOST", label: "Boost", Icon: Rocket },
+  { key: "PROGRESS", label: "Prog", Icon: BarChart3 },
 ];
 
 const SubTabBar = ({
@@ -50,16 +54,14 @@ const SubTabBar = ({
 }: {
   active: string;
   onSelect: (key: string) => void;
-  tabs: { key: string; label: string }[];
+  tabs: { key: string; label: string; Icon: React.FC<any> }[];
 }) => (
-  <View
-    style={{
-      flexDirection: "row",
-      borderBottomWidth: 1,
-      borderColor: "#1e1e1e",
-      backgroundColor: "#0c0c0c",
-    }}
-  >
+  <View style={{
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: T.border.subtle,
+    backgroundColor: T.bg.base,
+  }}>
     {tabs.map((t) => {
       const isActive = active === t.key;
       return (
@@ -68,23 +70,23 @@ const SubTabBar = ({
           onPress={() => onSelect(t.key)}
           style={{
             flex: 1,
-            paddingVertical: 10,
+            paddingVertical: T.space.md,
             alignItems: "center",
+            gap: 4,
+            backgroundColor: isActive ? T.bg.elevated : "transparent",
             borderBottomWidth: 2,
-            borderBottomColor: isActive ? "#007acc" : "transparent",
-            backgroundColor: isActive ? "#1a1a1a" : "transparent",
+            borderBottomColor: isActive ? T.accent.blue : "transparent",
           }}
         >
-          <Text
-            style={{
-              color: isActive ? "#00D4FF" : "#888",
-              fontSize: 11,
-              fontWeight: isActive ? "700" : "500",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              fontFamily: "monospace",
-            }}
-          >
+          <t.Icon size={14} color={isActive ? T.accent.blue : T.text.muted} strokeWidth={1.5} />
+          <Text style={{
+            color: isActive ? T.accent.blue : T.text.muted,
+            fontSize: T.font.sm,
+            fontWeight: isActive ? "700" : "500",
+            textTransform: "uppercase",
+            letterSpacing: 1,
+            fontFamily: T.mono,
+          }}>
             {t.label}
           </Text>
         </Pressable>
@@ -93,71 +95,42 @@ const SubTabBar = ({
   </View>
 );
 
-const SECTION_HEADER = {
-  paddingHorizontal: 16,
-  color: "#858585",
-  textTransform: "uppercase" as const,
-  fontSize: 11,
-  fontWeight: "bold" as const,
-  marginBottom: 8,
-  marginTop: 12,
-  letterSpacing: 1.5,
-};
-
 const PackagesContent: React.FC = () => (
-  <ScrollView style={{ flex: 1, paddingTop: 4 }}>
-    <Text style={SECTION_HEADER}>General Packages</Text>
-    <UpgradeCard
-      type="autoCoder"
-      title="Auto-Coder Unit"
-      description="+0.30 passive LoC/sec and +0.50 tap power per level"
-    />
-    <UpgradeCard
-      type="server"
-      title="Dedicated AWS Node"
-      description="+0.50 passive LoC/sec per level"
-    />
-    <UpgradeCard
-      type="keyboard"
-      title="Mechanical Switch"
-      description="+0.18 passive LoC/sec and +0.08 tap power per level"
-    />
+  <ScrollView style={{ flex: 1, paddingTop: T.space.xs }}>
+    <Text style={{
+      paddingHorizontal: T.space.lg, color: T.text.muted,
+      textTransform: "uppercase", fontSize: T.font.xs, fontWeight: "bold",
+      marginBottom: T.space.sm, marginTop: T.space.md, letterSpacing: 1.5, fontFamily: T.mono,
+    }}>
+      General Packages
+    </Text>
+    <UpgradeCard type="autoCoder" title="Auto-Coder Unit" description="+0.30 passive LoC/sec and +0.50 tap power per level" />
+    <UpgradeCard type="server" title="Dedicated AWS Node" description="+0.50 passive LoC/sec per level" />
+    <UpgradeCard type="keyboard" title="Mechanical Switch" description="+0.18 passive LoC/sec and +0.08 tap power per level" />
   </ScrollView>
 );
 
 const AdvancedContent: React.FC = () => (
-  <ScrollView style={{ flex: 1, paddingTop: 4 }}>
-    <Text style={SECTION_HEADER}>Advanced Modules</Text>
-    <UpgradeCard
-      type="aiPair"
-      title="AI Pair Programmer"
-      unlocksAt={500}
-      description="-15% strain per level"
-    />
-    <UpgradeCard
-      type="gitAutopilot"
-      title="Git Autopilot"
-      unlocksAt={5000}
-      description="+10% passive LoC/sec per level"
-    />
-    <UpgradeCard
-      type="cloudBurst"
-      title="Cloud Burst"
-      unlocksAt={50000}
-      description="2x income for 30s (costs 1 can)"
-    />
-
-    <Text style={{ ...SECTION_HEADER, marginTop: 16 }}>Scale Modules</Text>
-    <UpgradeCard
-      type="ciPipeline"
-      title="CI Pipeline"
-      description="+20% passive layer per level"
-    />
-    <UpgradeCard
-      type="observability"
-      title="Observability Matrix"
-      description="+35% global layer per level"
-    />
+  <ScrollView style={{ flex: 1, paddingTop: T.space.xs }}>
+    <Text style={{
+      paddingHorizontal: T.space.lg, color: T.text.muted,
+      textTransform: "uppercase", fontSize: T.font.xs, fontWeight: "bold",
+      marginBottom: T.space.sm, marginTop: T.space.md, letterSpacing: 1.5, fontFamily: T.mono,
+    }}>
+      Advanced Modules
+    </Text>
+    <UpgradeCard type="aiPair" title="AI Pair Programmer" unlocksAt={500} description="-15% strain per level" />
+    <UpgradeCard type="gitAutopilot" title="Git Autopilot" unlocksAt={5000} description="+10% passive LoC/sec per level" />
+    <UpgradeCard type="cloudBurst" title="Cloud Burst" unlocksAt={50000} description="2x income for 30s (costs 1 can)" />
+    <Text style={{
+      paddingHorizontal: T.space.lg, color: T.text.muted,
+      textTransform: "uppercase", fontSize: T.font.xs, fontWeight: "bold",
+      marginBottom: T.space.sm, marginTop: T.space.xl, letterSpacing: 1.5, fontFamily: T.mono,
+    }}>
+      Scale Modules
+    </Text>
+    <UpgradeCard type="ciPipeline" title="CI Pipeline" description="+20% passive layer per level" />
+    <UpgradeCard type="observability" title="Observability Matrix" description="+35% global layer per level" />
   </ScrollView>
 );
 
@@ -170,60 +143,25 @@ const BoostContent: React.FC = () => {
   const cost = getEnergyTechCost(techLevel);
   const canAfford = energyDrinks >= cost;
   const isMaxed = techLevel >= 20;
-
   const shopBonus = (techLevel * 0.2 * (1 / (1 + techLevel * 0.05)) * 100).toFixed(0);
   const rebootBonus = (prestigeLevel * 0.15 * (1 / (1 + prestigeLevel * 0.03)) * 100).toFixed(0);
 
   return (
     <ScrollView style={{ flex: 1 }}>
-      <View style={{ padding: 16 }}>
-        <View
-          style={{
-            borderRadius: 8,
-            borderWidth: 1,
-            borderColor: "#333",
-            backgroundColor: "#1a1a1a",
-            padding: 16,
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-            marginBottom: 12,
-          }}
-        >
-          <View
-            style={{ flexDirection: "row", alignItems: "center", gap: 16 }}
-          >
-            <View
-              style={{
-                backgroundColor: "#111",
-                borderRadius: 8,
-                padding: 12,
-              }}
-            >
-              <Battery
-                size={24}
-                color={canAfford ? "#39FF14" : "#858585"}
-                strokeWidth={1.5}
-              />
+      <View style={{ padding: T.space.lg }}>
+        <View style={{
+          borderRadius: T.radius.md, borderWidth: 1,
+          borderColor: T.border.default, backgroundColor: T.bg.elevated,
+          padding: T.space.lg, flexDirection: "row", alignItems: "center",
+          justifyContent: "space-between", marginBottom: T.space.md,
+        }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: T.space.lg }}>
+            <View style={{ backgroundColor: T.bg.surface, borderRadius: T.radius.md, padding: T.space.md, borderWidth: 1, borderColor: T.border.subtle }}>
+              <Battery size={22} color={canAfford ? T.accent.green : T.text.muted} strokeWidth={1.5} />
             </View>
             <View>
-              <Text
-                style={{
-                  color: "#d4d4d4",
-                  fontWeight: "500",
-                  fontSize: 16,
-                }}
-              >
-                Overclock Engine
-              </Text>
-              <Text
-                style={{
-                  color: "#858585",
-                  fontSize: 13,
-                  marginTop: 4,
-                  fontFamily: "monospace",
-                }}
-              >
+              <Text style={{ color: T.text.primary, fontWeight: "600", fontSize: T.font.lg, fontFamily: T.mono }}>Overclock Engine</Text>
+              <Text style={{ color: T.text.secondary, fontSize: T.font.sm, marginTop: T.space.xs, fontFamily: T.mono }}>
                 Lv.{techLevel} (+{shopBonus}% shop / +{rebootBonus}% prestige)
               </Text>
             </View>
@@ -231,59 +169,27 @@ const BoostContent: React.FC = () => {
           <Pressable
             onPress={purchaseEnergyUpgrade}
             disabled={!canAfford || isMaxed}
-            style={{
-              borderRadius: 4,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              backgroundColor: isMaxed
-                ? "#1a1a00"
-                : canAfford
-                ? "#1b5e20"
-                : "#333",
-            }}
+            style={({ pressed }) => ({
+              borderRadius: T.radius.sm, paddingHorizontal: T.space.xl, paddingVertical: T.space.md,
+              backgroundColor: isMaxed ? "#1a1a00" : canAfford ? "#1b5e20" : T.bg.elevated,
+              opacity: pressed ? 0.8 : 1,
+            })}
           >
-            <Text
-              style={{
-                fontFamily: "monospace",
-                fontSize: 14,
-                color: isMaxed
-                  ? "#F3F315"
-                  : canAfford
-                  ? "#39FF14"
-                  : "#858585",
-              }}
-            >
+            <Text style={{ fontFamily: T.mono, fontSize: T.font.base, color: isMaxed ? T.accent.yellow : canAfford ? T.accent.green : T.text.muted, fontWeight: "600" }}>
               {isMaxed ? "MAXED" : `drink(${formatNumber(cost)})`}
             </Text>
           </Pressable>
         </View>
 
-        <Text
-          style={{
-            color: "#FF073A",
-            textTransform: "uppercase",
-            fontSize: 11,
-            fontWeight: "bold",
-            letterSpacing: 1.5,
-            marginBottom: 8,
-            marginTop: 8,
-            fontFamily: "monospace",
-          }}
-        >
+        <Text style={{
+          color: T.accent.red, textTransform: "uppercase", fontSize: T.font.xs,
+          fontWeight: "bold", letterSpacing: 1.5, marginBottom: T.space.sm, marginTop: T.space.sm, fontFamily: T.mono,
+        }}>
           Danger Zone - Vibe v{rebootCount}.0.0
         </Text>
         <RebootButton />
-
-        <View style={{ alignItems: "center", marginTop: 12 }}>
-          <Text
-            style={{
-              color: "white",
-              fontSize: 11,
-              opacity: 0.35,
-              textAlign: "center",
-              fontFamily: "monospace",
-            }}
-          >
+        <View style={{ alignItems: "center", marginTop: T.space.md }}>
+          <Text style={{ color: T.text.disabled, fontSize: T.font.xs, textAlign: "center", fontFamily: T.mono }}>
             Tap floating energy cans in Simulation to earn cans
           </Text>
         </View>
@@ -292,44 +198,46 @@ const BoostContent: React.FC = () => {
   );
 };
 
+const EVENT_ICONS: Record<string, React.FC<any>> = {
+  code_rush: Flame,
+  bug_swarm: Bug,
+  refactor_window: Scissors,
+  coffee_break: Coffee,
+};
+
 const EventBanner: React.FC = () => {
   const activeEvent = useGameStore((s) => s.activeEvent);
   if (!activeEvent) return null;
   const secsLeft = Math.max(0, Math.ceil((activeEvent.endsAt - Date.now()) / 1000));
-  const colors: Record<string, string> = {
-    code_rush: "#39FF14",
-    bug_swarm: "#FF073A",
-    refactor_window: "#F3F315",
-    coffee_break: "#4FC1FF",
-  };
-  const color = colors[activeEvent.id] ?? "#39FF14";
+  const totalDuration = activeEvent.duration ?? 30;
+  const progress = Math.max(0, secsLeft / totalDuration);
+  const colors: Record<string, string> = { code_rush: T.accent.green, bug_swarm: T.accent.red, refactor_window: T.accent.yellow, coffee_break: T.accent.blueAlt };
+  const color = colors[activeEvent.id] ?? T.accent.green;
+  const EventIcon = EVENT_ICONS[activeEvent.id];
+
   return (
-    <View
-      style={{
-        marginHorizontal: 16,
-        marginVertical: 6,
-        borderRadius: 6,
-        borderWidth: 1,
-        borderColor: color,
-        backgroundColor: `${color}15`,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-      }}
-    >
-      <View>
-        <Text style={{ color, fontWeight: "bold", fontSize: 13, fontFamily: "monospace" }}>
-          {activeEvent.title}
-        </Text>
-        <Text style={{ color: "#ccc", fontSize: 11, fontFamily: "monospace" }}>
-          {activeEvent.description}
-        </Text>
+    <View style={{
+      marginHorizontal: T.space.lg, marginVertical: T.space.xs,
+      borderRadius: T.radius.md, borderWidth: 1, borderColor: `${color}44`,
+      backgroundColor: `${color}12`,
+      paddingHorizontal: T.space.lg, paddingVertical: T.space.sm,
+      overflow: "hidden",
+    }}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: T.space.sm, flex: 1 }}>
+          {EventIcon && <EventIcon size={16} color={color} strokeWidth={2} />}
+          <View style={{ flex: 1 }}>
+            <Text style={{ color, fontWeight: "bold", fontSize: T.font.sm, fontFamily: T.mono }}>{activeEvent.title}</Text>
+            <Text style={{ color: T.text.secondary, fontSize: T.font.xs, fontFamily: T.mono }}>{activeEvent.description}</Text>
+          </View>
+        </View>
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ color, fontWeight: "bold", fontSize: T.font.base, fontFamily: T.mono }}>{secsLeft}s</Text>
+        </View>
       </View>
-      <Text style={{ color, fontWeight: "bold", fontSize: 14, fontFamily: "monospace" }}>
-        {secsLeft}s
-      </Text>
+      <View style={{ marginTop: T.space.xs, height: 3, borderRadius: 999, backgroundColor: `${color}20`, overflow: "hidden" }}>
+        <View style={{ width: `${Math.floor(progress * 100)}%`, height: "100%", borderRadius: 999, backgroundColor: color }} />
+      </View>
     </View>
   );
 };
@@ -337,82 +245,58 @@ const EventBanner: React.FC = () => {
 const AchievementsPanel: React.FC = () => {
   const achievements = useGameStore((s) => s.achievements);
   const categories = ["economy", "tapping", "upgrades", "meta", "secret"] as const;
-  const catLabels: Record<string, string> = {
-    economy: "Economy",
-    tapping: "Tapping",
-    upgrades: "Upgrades",
-    meta: "Meta",
-    secret: "Secret",
-  };
+  const catLabels: Record<string, string> = { economy: "Economy", tapping: "Tapping", upgrades: "Upgrades", meta: "Meta", secret: "Secret" };
+  const catColors: Record<string, string> = { economy: T.accent.green, tapping: T.accent.blue, upgrades: T.accent.blueAlt, meta: T.accent.purple, secret: T.accent.yellow };
+
+  const total = ACHIEVEMENT_DEFINITIONS.length;
+  const unlocked = achievements.length;
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-      <Text
-        style={{
-          color: "#F3F315",
-          fontSize: 12,
-          fontWeight: "bold",
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          fontFamily: "monospace",
-          marginBottom: 8,
-        }}
-      >
-        Achievements ({achievements.length}/{ACHIEVEMENT_DEFINITIONS.length})
+    <View style={{ paddingHorizontal: T.space.lg, paddingVertical: T.space.sm }}>
+      <Text style={{ color: T.accent.yellow, fontSize: T.font.sm, fontWeight: "bold", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: T.mono, marginBottom: T.space.sm }}>
+        Achievements ({unlocked}/{total})
       </Text>
+      <View style={{ height: 4, borderRadius: 999, backgroundColor: T.bg.elevated, marginBottom: T.space.md, overflow: "hidden" }}>
+        <View style={{ width: `${Math.floor((unlocked / Math.max(total, 1)) * 100)}%`, height: "100%", borderRadius: 999, backgroundColor: T.accent.yellow }} />
+      </View>
       {categories.map((cat) => {
         const defs = ACHIEVEMENT_DEFINITIONS.filter((a) => a.category === cat);
         if (defs.length === 0) return null;
+        const catUnlocked = defs.filter((a) => achievements.includes(a.id)).length;
+        const catColor = catColors[cat] ?? T.accent.green;
         return (
-          <View key={cat} style={{ marginBottom: 8 }}>
-            <Text
-              style={{
-                color: "#888",
-                fontSize: 10,
-                fontWeight: "bold",
-                letterSpacing: 1,
-                textTransform: "uppercase",
-                fontFamily: "monospace",
-                marginBottom: 4,
-              }}
-            >
-              {catLabels[cat]}
-            </Text>
+          <View key={cat} style={{ marginBottom: T.space.md }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: T.space.sm, marginBottom: T.space.xs }}>
+              <View style={{ width: 3, height: 14, backgroundColor: catColor, borderRadius: 2 }} />
+              <Text style={{ color: T.text.muted, fontSize: T.font.xs, fontWeight: "bold", letterSpacing: 1, textTransform: "uppercase", fontFamily: T.mono }}>
+                {catLabels[cat]} ({catUnlocked}/{defs.length})
+              </Text>
+            </View>
             {defs.map((ach) => {
-              const unlocked = achievements.includes(ach.id);
+              const isUnlocked = achievements.includes(ach.id);
               return (
-                <View
-                  key={ach.id}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    paddingVertical: 4,
-                    paddingHorizontal: 8,
-                    borderRadius: 4,
-                    backgroundColor: unlocked ? "#1a2a1a" : "#111",
-                    marginBottom: 3,
-                    gap: 8,
-                  }}
-                >
-                  <Text style={{ fontSize: 14 }}>{unlocked ? "★" : "☆"}</Text>
+                <View key={ach.id} style={{
+                  flexDirection: "row", alignItems: "center", gap: T.space.sm,
+                  paddingVertical: T.space.xs, paddingHorizontal: T.space.sm,
+                  borderRadius: T.radius.sm,
+                  backgroundColor: isUnlocked ? `${catColor}15` : T.bg.surface,
+                  marginBottom: 3,
+                }}>
+                  <View style={{
+                    width: 24, height: 24, borderRadius: 12,
+                    backgroundColor: isUnlocked ? catColor : T.bg.elevated,
+                    alignItems: "center", justifyContent: "center",
+                    borderWidth: 1, borderColor: isUnlocked ? catColor : T.border.default,
+                  }}>
+                    <Text style={{ color: isUnlocked ? "#000" : T.text.disabled, fontSize: 11, fontWeight: "bold" }}>
+                      {isUnlocked ? "✓" : ""}
+                    </Text>
+                  </View>
                   <View style={{ flex: 1 }}>
-                    <Text
-                      style={{
-                        color: unlocked ? "#9fdf9f" : "#555",
-                        fontSize: 12,
-                        fontWeight: "bold",
-                        fontFamily: "monospace",
-                      }}
-                    >
+                    <Text style={{ color: isUnlocked ? T.text.primary : T.text.disabled, fontSize: T.font.sm, fontWeight: "600", fontFamily: T.mono }}>
                       {ach.title}
                     </Text>
-                    <Text
-                      style={{
-                        color: unlocked ? "#777" : "#333",
-                        fontSize: 10,
-                        fontFamily: "monospace",
-                      }}
-                    >
+                    <Text style={{ color: isUnlocked ? T.text.muted : T.text.disabled, fontSize: T.font.xs, fontFamily: T.mono }}>
                       {ach.description}
                     </Text>
                   </View>
@@ -438,77 +322,66 @@ const StatsPanel: React.FC = () => {
   const serverLevel = useGameStore((s) => s.serverLevel);
   const autoCoderLevel = useGameStore((s) => s.autoCoderLevel);
   const keyboardLevel = useGameStore((s) => s.keyboardLevel);
-
   const hours = Math.floor(totalTimePlayed / 3600);
   const mins = Math.floor((totalTimePlayed % 3600) / 60);
 
-  const statRow = (label: string, value: string) => (
-    <View
-      style={{
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingVertical: 4,
-        paddingHorizontal: 8,
-        borderBottomWidth: 1,
-        borderColor: "#1a1a1a",
-      }}
-    >
-      <Text style={{ color: "#888", fontSize: 11, fontFamily: "monospace" }}>{label}</Text>
-      <Text style={{ color: "#d4d4d4", fontSize: 11, fontFamily: "monospace", fontWeight: "bold" }}>
-        {value}
-      </Text>
+  const StatCard: React.FC<{ label: string; value: string; accentColor: string }> = ({ label, value, accentColor }) => (
+    <View style={{
+      flex: 1, minWidth: 120,
+      borderRadius: T.radius.md, backgroundColor: T.bg.surface,
+      borderWidth: 1, borderColor: T.border.subtle,
+      borderLeftWidth: 3, borderLeftColor: accentColor,
+      padding: T.space.md,
+    }}>
+      <Text style={{ color: T.text.muted, fontSize: T.font.xs, fontFamily: T.mono, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</Text>
+      <Text style={{ color: T.text.primary, fontSize: T.font.base, fontWeight: "bold", fontFamily: T.mono, marginTop: 2 }}>{value}</Text>
     </View>
   );
 
+  const serverIncome = serverLevel * 0.5;
+  const autoCoderIncome = autoCoderLevel * 0.3;
+  const keyboardIncome = keyboardLevel * 0.18;
+  const totalIncome = Math.max(serverIncome + autoCoderIncome + keyboardIncome, 0.01);
+
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-      <Text
-        style={{
-          color: "#4FC1FF",
-          fontSize: 12,
-          fontWeight: "bold",
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          fontFamily: "monospace",
-          marginBottom: 8,
-        }}
-      >
+    <View style={{ paddingHorizontal: T.space.lg, paddingVertical: T.space.sm }}>
+      <Text style={{ color: T.accent.blueAlt, fontSize: T.font.sm, fontWeight: "bold", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: T.mono, marginBottom: T.space.sm }}>
         Statistics
       </Text>
-      <View
-        style={{
-          borderRadius: 8,
-          borderWidth: 1,
-          borderColor: "#222",
-          backgroundColor: "#111",
-          overflow: "hidden",
-        }}
-      >
-        {statRow("Total Taps", totalTaps.toLocaleString())}
-        {statRow("Time Played", `${hours}h ${mins}m`)}
-        {statRow("Lifetime LoC", formatNumber(lifetimeTokens))}
-        {statRow("Current LoC/sec", formatNumber(locPerSecond))}
-        {statRow("Highest Combo", highestCombo.toString())}
-        {statRow("Sparks Collected", totalSparksCollected.toString())}
-        {statRow("Bonus Words Claimed", totalBonusWordsClaimed.toString())}
-        {statRow("Total Reboots", rebootCount.toString())}
-        <View style={{ padding: 8 }}>
-          <Text
-            style={{
-              color: "#666",
-              fontSize: 10,
-              fontFamily: "monospace",
-              textTransform: "uppercase",
-              letterSpacing: 1,
-              marginBottom: 4,
-            }}
-          >
-            LoC/sec Breakdown
-          </Text>
-          <Text style={{ color: "#777", fontSize: 10, fontFamily: "monospace" }}>
-            Server: +{(serverLevel * 0.5).toFixed(1)} | Auto-Coder: +{(autoCoderLevel * 0.3).toFixed(1)} | Keyboard: +{(keyboardLevel * 0.18).toFixed(2)}
-          </Text>
-        </View>
+
+      <Text style={{ color: T.text.muted, fontSize: T.font.xs, fontFamily: T.mono, textTransform: "uppercase", letterSpacing: 1, marginBottom: T.space.xs }}>Session</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: T.space.sm, marginBottom: T.space.md }}>
+        <StatCard label="Total Taps" value={totalTaps.toLocaleString()} accentColor={T.accent.blue} />
+        <StatCard label="Time Played" value={`${hours}h ${mins}m`} accentColor={T.accent.blue} />
+        <StatCard label="Highest Combo" value={highestCombo.toString()} accentColor={T.accent.blue} />
+      </View>
+
+      <Text style={{ color: T.text.muted, fontSize: T.font.xs, fontFamily: T.mono, textTransform: "uppercase", letterSpacing: 1, marginBottom: T.space.xs }}>All-Time</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: T.space.sm, marginBottom: T.space.md }}>
+        <StatCard label="Lifetime LoC" value={formatNumber(lifetimeTokens)} accentColor={T.accent.green} />
+        <StatCard label="Current LoC/sec" value={formatNumber(locPerSecond)} accentColor={T.accent.green} />
+        <StatCard label="Total Reboots" value={rebootCount.toString()} accentColor={T.accent.green} />
+        <StatCard label="Sparks" value={totalSparksCollected.toString()} accentColor={T.accent.yellow} />
+        <StatCard label="Bonus Words" value={totalBonusWordsClaimed.toString()} accentColor={T.accent.yellow} />
+      </View>
+
+      <Text style={{ color: T.text.muted, fontSize: T.font.xs, fontFamily: T.mono, textTransform: "uppercase", letterSpacing: 1, marginBottom: T.space.xs }}>LoC/sec Breakdown</Text>
+      <View style={{ borderRadius: T.radius.md, backgroundColor: T.bg.surface, borderWidth: 1, borderColor: T.border.subtle, padding: T.space.md }}>
+        {[
+          { label: "Server", value: serverIncome, color: T.accent.blueAlt },
+          { label: "Auto-Coder", value: autoCoderIncome, color: T.accent.blue },
+          { label: "Keyboard", value: keyboardIncome, color: T.accent.teal },
+        ].map((src) => (
+          <View key={src.label} style={{ marginBottom: T.space.xs }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+              <Text style={{ color: T.text.secondary, fontSize: T.font.xs, fontFamily: T.mono }}>{src.label}</Text>
+              <Text style={{ color: T.text.primary, fontSize: T.font.xs, fontFamily: T.mono, fontWeight: "bold" }}>+{Math.round(src.value)}</Text>
+            </View>
+            <View style={{ height: 4, borderRadius: 2, backgroundColor: T.bg.elevated, marginTop: 2, overflow: "hidden" }}>
+              <View style={{ width: `${Math.min(100, (src.value / totalIncome) * 100)}%`, height: "100%", borderRadius: 2, backgroundColor: src.color }} />
+            </View>
+          </View>
+        ))}
       </View>
     </View>
   );
@@ -518,58 +391,36 @@ const AutoBuyPanel: React.FC = () => {
   const autoBuyEnabled = useGameStore((s) => s.autoBuyEnabled);
   const toggleAutoBuy = useGameStore((s) => s.toggleAutoBuy);
   const rebootCount = useGameStore((s) => s.rebootCount);
-
   if (rebootCount < 1) return null;
 
   const types = [
-    { key: "autoCoder", label: "Auto-Coder" },
-    { key: "server", label: "Server" },
-    { key: "keyboard", label: "Keyboard" },
-    { key: "aiPair", label: "AI Pair" },
-    { key: "gitAutopilot", label: "Git Autopilot" },
-    { key: "ciPipeline", label: "CI Pipeline" },
+    { key: "autoCoder", label: "Auto-Coder" }, { key: "server", label: "Server" },
+    { key: "keyboard", label: "Keyboard" }, { key: "aiPair", label: "AI Pair" },
+    { key: "gitAutopilot", label: "Git Autopilot" }, { key: "ciPipeline", label: "CI Pipeline" },
     { key: "observability", label: "Observability" },
   ];
 
   return (
-    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
-      <Text
-        style={{
-          color: "#C586C0",
-          fontSize: 12,
-          fontWeight: "bold",
-          letterSpacing: 1.5,
-          textTransform: "uppercase",
-          fontFamily: "monospace",
-          marginBottom: 8,
-        }}
-      >
+    <View style={{ paddingHorizontal: T.space.lg, paddingVertical: T.space.sm }}>
+      <Text style={{ color: T.accent.purple, fontSize: T.font.sm, fontWeight: "bold", letterSpacing: 1.5, textTransform: "uppercase", fontFamily: T.mono, marginBottom: T.space.sm }}>
         Auto-Buy (unlocked via reboot)
       </Text>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: T.space.xs }}>
         {types.map((t) => {
           const on = autoBuyEnabled[t.key] ?? false;
           return (
             <Pressable
               key={t.key}
               onPress={() => toggleAutoBuy(t.key)}
-              style={{
-                paddingHorizontal: 10,
-                paddingVertical: 6,
-                borderRadius: 4,
-                borderWidth: 1,
-                borderColor: on ? "#39FF14" : "#333",
-                backgroundColor: on ? "#1a2a1a" : "#111",
-              }}
+              style={({ pressed }) => ({
+                paddingHorizontal: T.space.sm, paddingVertical: T.space.xs + 2,
+                borderRadius: T.radius.sm, borderWidth: 1,
+                borderColor: on ? T.accent.green : T.border.default,
+                backgroundColor: on ? `${T.accent.green}15` : T.bg.surface,
+                opacity: pressed ? 0.8 : 1,
+              })}
             >
-              <Text
-                style={{
-                  color: on ? "#39FF14" : "#666",
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  fontWeight: "bold",
-                }}
-              >
+              <Text style={{ color: on ? T.accent.green : T.text.muted, fontSize: T.font.xs, fontFamily: T.mono, fontWeight: "bold" }}>
                 {t.label}: {on ? "ON" : "OFF"}
               </Text>
             </Pressable>
@@ -580,158 +431,142 @@ const AutoBuyPanel: React.FC = () => {
   );
 };
 
-const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({
-  visible,
-  onClose,
-}) => {
+const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ visible, onClose }) => {
   const resetSave = useGameStore((s) => s.resetSave);
   const exportSave = useGameStore((s) => s.exportSave);
   const [exportString, setExportString] = useState("");
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [resetInput, setResetInput] = useState("");
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const handleExport = () => {
-    setExportString(exportSave());
+    const str = exportSave();
+    setExportString(str);
+    try { Clipboard.setString(str); } catch {}
   };
 
   const handleReset = () => {
-    if (!confirmReset) {
-      setConfirmReset(true);
-      return;
-    }
+    if (!showResetConfirm) { setShowResetConfirm(true); return; }
+    if (resetInput !== "RESET") return;
     resetSave();
-    setConfirmReset(false);
+    setShowResetConfirm(false);
+    setResetInput("");
+    onClose();
+  };
+
+  const handleClose = () => {
+    setShowResetConfirm(false);
+    setResetInput("");
+    setExportString("");
     onClose();
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.8)",
-          justifyContent: "center",
-          alignItems: "center",
-          padding: 24,
-        }}
-      >
-        <View
-          style={{
-            width: "100%",
-            maxWidth: 400,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: "#333",
-            backgroundColor: "#111",
-            padding: 20,
-          }}
-        >
-          <Text
-            style={{
-              color: "#d4d4d4",
-              fontSize: 18,
-              fontWeight: "bold",
-              fontFamily: "monospace",
-              marginBottom: 16,
-              textAlign: "center",
-            }}
-          >
-            Settings
-          </Text>
-
-          <Text
-            style={{
-              color: "#888",
-              fontSize: 10,
-              fontFamily: "monospace",
-              textAlign: "center",
-              marginBottom: 16,
-            }}
-          >
-            VibeCodSim v1.0.0
-          </Text>
-
-          <Pressable
-            onPress={handleExport}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              borderRadius: 6,
-              backgroundColor: "#1a2a3a",
-              borderWidth: 1,
-              borderColor: "#2e405f",
-              marginBottom: 10,
-            }}
-          >
-            <Text style={{ color: "#4FC1FF", fontFamily: "monospace", fontSize: 13, textAlign: "center" }}>
-              Export Save
+      <View style={{
+        flex: 1,
+        backgroundColor: "rgba(0,0,0,0.85)",
+        justifyContent: "center", alignItems: "center",
+        padding: T.space.xl,
+      }}>
+        <View style={{
+          width: "100%", maxWidth: 400,
+          borderRadius: T.radius.lg, borderWidth: 1, borderColor: T.border.default,
+          backgroundColor: T.bg.surface, overflow: "hidden",
+        }}>
+          <View style={{ height: 3, backgroundColor: T.accent.blue }} />
+          <View style={{ padding: T.space.xl }}>
+            <Text style={{ color: T.text.primary, fontSize: T.font.xl, fontWeight: "bold", fontFamily: T.mono, marginBottom: T.space.xs, textAlign: "center" }}>
+              Settings
             </Text>
-          </Pressable>
+            <Text style={{ color: T.text.muted, fontSize: T.font.xs, fontFamily: T.mono, textAlign: "center", marginBottom: T.space.xl }}>
+              VibeCodSim v1.0.0
+            </Text>
 
-          {exportString ? (
-            <View style={{ marginBottom: 10 }}>
-              <TextInput
-                value={exportString}
-                selectTextOnFocus
-                style={{
-                  borderWidth: 1,
-                  borderColor: "#333",
-                  borderRadius: 4,
-                  padding: 8,
-                  color: "#999",
-                  fontSize: 10,
-                  fontFamily: "monospace",
-                  backgroundColor: "#0a0a0a",
-                  maxHeight: 80,
-                }}
-                multiline
-                editable={false}
-              />
-              <Text style={{ color: "#555", fontSize: 9, fontFamily: "monospace", marginTop: 4 }}>
-                Copy this string to back up your save
-              </Text>
-            </View>
-          ) : null}
+            <View style={{ height: 1, backgroundColor: T.border.subtle, marginBottom: T.space.lg }} />
 
-          <Pressable
-            onPress={handleReset}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              borderRadius: 6,
-              backgroundColor: confirmReset ? "#4a0000" : "#2a0005",
-              borderWidth: 1,
-              borderColor: "#FF073A",
-              marginBottom: 10,
-            }}
-          >
-            <Text
-              style={{
-                color: "#FF073A",
-                fontFamily: "monospace",
-                fontSize: 13,
-                textAlign: "center",
-                fontWeight: "bold",
-              }}
+            <Pressable
+              onPress={handleExport}
+              style={({ pressed }) => ({
+                paddingVertical: T.space.md, paddingHorizontal: T.space.lg,
+                borderRadius: T.radius.sm, backgroundColor: pressed ? "#1a3a5a" : "#1a2a3a",
+                borderWidth: 1, borderColor: "#2e405f", marginBottom: T.space.sm,
+              })}
             >
-              {confirmReset ? "TAP AGAIN TO CONFIRM RESET" : "Reset Save"}
-            </Text>
-          </Pressable>
+              <Text style={{ color: T.accent.blueAlt, fontFamily: T.mono, fontSize: T.font.sm, textAlign: "center", fontWeight: "600" }}>
+                Export Save (Copy to Clipboard)
+              </Text>
+            </Pressable>
 
-          <Pressable
-            onPress={() => { setConfirmReset(false); setExportString(""); onClose(); }}
-            style={{
-              paddingVertical: 10,
-              paddingHorizontal: 16,
-              borderRadius: 6,
-              backgroundColor: "#1a1a1a",
-              borderWidth: 1,
-              borderColor: "#333",
-            }}
-          >
-            <Text style={{ color: "#888", fontFamily: "monospace", fontSize: 13, textAlign: "center" }}>
-              Close
-            </Text>
-          </Pressable>
+            {exportString ? (
+              <View style={{ marginBottom: T.space.sm }}>
+                <TextInput
+                  value={exportString}
+                  selectTextOnFocus
+                  style={{
+                    borderWidth: 1, borderColor: T.border.default, borderRadius: T.radius.sm,
+                    padding: T.space.sm, color: T.text.muted, fontSize: T.font.xs,
+                    fontFamily: T.mono, backgroundColor: T.bg.base, maxHeight: 60,
+                  }}
+                  multiline editable={false}
+                />
+                <Text style={{ color: T.text.disabled, fontSize: 9, fontFamily: T.mono, marginTop: T.space.xs }}>
+                  Copied! Save this string to back up your progress.
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={{ height: 1, backgroundColor: T.border.subtle, marginVertical: T.space.md }} />
+
+            {showResetConfirm ? (
+              <View style={{ marginBottom: T.space.sm }}>
+                <Text style={{ color: T.accent.red, fontSize: T.font.sm, fontFamily: T.mono, marginBottom: T.space.xs, textAlign: "center" }}>
+                  Type RESET to confirm
+                </Text>
+                <TextInput
+                  value={resetInput}
+                  onChangeText={setResetInput}
+                  placeholder="RESET"
+                  placeholderTextColor={T.text.disabled}
+                  autoCapitalize="characters"
+                  style={{
+                    borderWidth: 1, borderColor: T.accent.red, borderRadius: T.radius.sm,
+                    padding: T.space.sm, color: T.accent.red, fontSize: T.font.base,
+                    fontFamily: T.mono, backgroundColor: "#1a0005", textAlign: "center",
+                    marginBottom: T.space.sm,
+                  }}
+                />
+              </View>
+            ) : null}
+
+            <Pressable
+              onPress={handleReset}
+              disabled={showResetConfirm && resetInput !== "RESET"}
+              style={({ pressed }) => ({
+                paddingVertical: T.space.md, paddingHorizontal: T.space.lg,
+                borderRadius: T.radius.sm,
+                backgroundColor: pressed ? "#5a0000" : showResetConfirm ? "#4a0000" : "#2a0005",
+                borderWidth: 1, borderColor: T.accent.red,
+                marginBottom: T.space.sm,
+                opacity: showResetConfirm && resetInput !== "RESET" ? 0.5 : 1,
+              })}
+            >
+              <Text style={{ color: T.accent.red, fontFamily: T.mono, fontSize: T.font.sm, textAlign: "center", fontWeight: "bold" }}>
+                {showResetConfirm ? "Confirm Reset" : "Reset Save"}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              onPress={handleClose}
+              style={({ pressed }) => ({
+                paddingVertical: T.space.md, paddingHorizontal: T.space.lg,
+                borderRadius: T.radius.sm,
+                backgroundColor: pressed ? T.bg.elevated : T.bg.overlay,
+                borderWidth: 1, borderColor: T.border.default,
+              })}
+            >
+              <Text style={{ color: T.text.secondary, fontFamily: T.mono, fontSize: T.font.sm, textAlign: "center" }}>Close</Text>
+            </Pressable>
+          </View>
         </View>
       </View>
     </Modal>
@@ -743,47 +578,19 @@ const ProgressContent: React.FC = () => {
   const architecturePoints = useGameStore((s) => s.architecturePoints);
 
   return (
-    <ScrollView style={{ flex: 1, paddingTop: 8 }}>
-      <View
-        style={{
-          marginHorizontal: 16,
-          borderRadius: 8,
-          borderWidth: 1,
-          borderColor: "#2e405f",
-          backgroundColor: "#111826",
-          padding: 12,
-          marginBottom: 10,
-        }}
-      >
-        <Text
-          style={{
-            color: "#9fb4ff",
-            fontSize: 11,
-            textTransform: "uppercase",
-            letterSpacing: 1.4,
-            fontFamily: "monospace",
-          }}
-        >
+    <ScrollView style={{ flex: 1, paddingTop: T.space.sm }}>
+      <View style={{
+        marginHorizontal: T.space.lg, borderRadius: T.radius.md,
+        borderWidth: 1, borderColor: "#2e405f", backgroundColor: "#111826",
+        padding: T.space.lg, marginBottom: T.space.sm,
+      }}>
+        <Text style={{ color: "#9fb4ff", fontSize: T.font.xs, textTransform: "uppercase", letterSpacing: 1.4, fontFamily: T.mono }}>
           Progression Snapshot
         </Text>
-        <Text
-          style={{
-            color: "#d4d4d4",
-            fontSize: 14,
-            marginTop: 4,
-            fontFamily: "monospace",
-          }}
-        >
+        <Text style={{ color: T.text.primary, fontSize: T.font.base, marginTop: T.space.xs, fontFamily: T.mono }}>
           Total LoC: {formatNumber(lifetimeTokens)}
         </Text>
-        <Text
-          style={{
-            color: "#d4d4d4",
-            fontSize: 14,
-            marginTop: 2,
-            fontFamily: "monospace",
-          }}
-        >
+        <Text style={{ color: T.text.primary, fontSize: T.font.base, marginTop: 2, fontFamily: T.mono }}>
           Architecture Points: {architecturePoints}
         </Text>
       </View>
@@ -796,34 +603,56 @@ const ProgressContent: React.FC = () => {
   );
 };
 
-const LoadingScreen: React.FC = () => (
-  <View
-    style={{
-      flex: 1,
-      backgroundColor: "#080808",
-      alignItems: "center",
-      justifyContent: "center",
-    }}
-  >
-    <Text style={{ color: "#4FC1FF", fontSize: 18, fontFamily: "monospace", letterSpacing: 3 }}>
-      LOADING...
-    </Text>
-    <Text style={{ color: "#555", fontSize: 12, fontFamily: "monospace", marginTop: 8 }}>
-      Hydrating game state
-    </Text>
-  </View>
-);
+const LoadingScreen: React.FC = () => {
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
+  const [dots, setDots] = useState(0);
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [pulseAnim]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setDots((d) => (d + 1) % 4), 400);
+    return () => clearInterval(interval);
+  }, []);
+
+  const dotStr = ".".repeat(dots);
+
+  return (
+    <View style={{
+      flex: 1, backgroundColor: T.bg.base,
+      alignItems: "center", justifyContent: "center",
+    }}>
+      <Text style={{ color: T.text.muted, fontSize: T.font.sm, fontFamily: T.mono, letterSpacing: 4, marginBottom: T.space.lg, textTransform: "uppercase" }}>
+        VibeCodSim
+      </Text>
+      <Animated.View style={{ opacity: pulseAnim }}>
+        <Text style={{ color: T.accent.blue, fontSize: T.font.xl, fontFamily: T.mono, letterSpacing: 3 }}>
+          Loading{dotStr}
+        </Text>
+      </Animated.View>
+      <Text style={{ color: T.text.disabled, fontSize: T.font.xs, fontFamily: T.mono, marginTop: T.space.sm }}>
+        Hydrating game state
+      </Text>
+    </View>
+  );
+};
 
 const GameScreen: React.FC = () => {
   const { height, width } = useWindowDimensions();
   const [mobileTab, setMobileTab] = useState<MobileTab>("NODE");
-  const [desktopSubTab, setDesktopSubTab] =
-    useState<DesktopSubTab>("packages");
+  const [desktopSubTab, setDesktopSubTab] = useState<DesktopSubTab>("packages");
   const masterTick = useGameStore((s) => s.masterTick);
   const hasHydrated = useGameStore((s) => s.hasHydrated);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const insets = useSafeAreaInsets();
-
   const offlineEarnedTokens = useGameStore((s) => s.offlineEarnedTokens);
   const offlineEarnedSeconds = useGameStore((s) => s.offlineEarnedSeconds);
   const clearOfflineToast = useGameStore((s) => s.clearOfflineToast);
@@ -831,213 +660,142 @@ const GameScreen: React.FC = () => {
   useEffect(() => {
     let animationFrameId: number;
     let fallbackInterval: ReturnType<typeof setInterval>;
-
     if (Platform.OS === "web") {
-      const loop = (timestamp: number) => {
-        masterTick(timestamp);
-        animationFrameId = requestAnimationFrame(loop);
-      };
+      const loop = (timestamp: number) => { masterTick(timestamp); animationFrameId = requestAnimationFrame(loop); };
       animationFrameId = requestAnimationFrame(loop);
     } else {
-      fallbackInterval = setInterval(() => {
-        masterTick(Date.now());
-      }, 100);
+      fallbackInterval = setInterval(() => { masterTick(Date.now()); }, 100);
     }
-
-    return () => {
-      if (Platform.OS === "web") cancelAnimationFrame(animationFrameId);
-      else clearInterval(fallbackInterval);
-    };
+    return () => { if (Platform.OS === "web") cancelAnimationFrame(animationFrameId); else clearInterval(fallbackInterval); };
   }, [masterTick]);
 
   const isDesktop = width > 768;
-
   if (!hasHydrated) return <LoadingScreen />;
-
-  // ── Desktop sub-tab content router ─────────────────────────────────────
 
   const renderDesktopSubTab = () => {
     switch (desktopSubTab) {
-      case "packages":
-        return <PackagesContent />;
-      case "advanced":
-        return <AdvancedContent />;
-      case "boost":
-        return <BoostContent />;
-      case "progress":
-        return <ProgressContent />;
+      case "packages": return <PackagesContent />;
+      case "advanced": return <AdvancedContent />;
+      case "boost": return <BoostContent />;
+      case "progress": return <ProgressContent />;
     }
   };
 
-  // ── DESKTOP LAYOUT ────────────────────────────────────────────────────
-
   if (isDesktop) {
     return (
-      <View
-        style={{
-          flexDirection: "row",
-          height: Platform.OS === "web" ? ("100dvh" as any) : height,
-          backgroundColor: "#080808",
-        }}
-      >
-        {/* LEFT pane -- Simulation (fills space) */}
-        <View
-          style={{
-            flex: 1,
-            backgroundColor: "#0d0d0d",
-            position: "relative",
-            overflow: "hidden",
-          }}
-        >
+      <View style={{
+        flexDirection: "row",
+        height: Platform.OS === "web" ? ("100dvh" as any) : height,
+        backgroundColor: T.bg.base,
+      }}>
+        <View style={{ flex: 1, backgroundColor: T.bg.base, position: "relative", overflow: "hidden" }}>
           <GraphicGamePanel />
         </View>
 
-        {/* RIGHT pane -- Stats, sub-tabs, upgrade content */}
-        <View
-          style={{
-            width: 420,
-            borderLeftWidth: 1,
-            borderColor: "#222",
-            backgroundColor: "#0a0a0a",
-            flexDirection: "column",
-          }}
-        >
-          <View
-            style={{
-              padding: 16,
-              borderBottomWidth: 1,
-              borderColor: "#222",
-              paddingTop: 24,
-              backgroundColor: "#050505",
-            }}
-          >
+        <View style={{
+          width: 420, borderLeftWidth: 1, borderColor: T.border.subtle,
+          backgroundColor: T.bg.panel, flexDirection: "column",
+        }}>
+          <View style={{
+            padding: T.space.lg, borderBottomWidth: 1, borderColor: T.border.subtle,
+            paddingTop: T.space.xl, backgroundColor: T.bg.deep,
+          }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <View style={{ flex: 1 }}>
-                <TokenDisplay />
-              </View>
-              <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8, marginLeft: 8 }}>
-                <Settings size={18} color="#888" strokeWidth={1.5} />
+              <View style={{ flex: 1 }}><TokenDisplay /></View>
+              <Pressable
+                onPress={() => setSettingsOpen(true)}
+                style={({ pressed }) => ({
+                  padding: T.space.sm, marginLeft: T.space.sm,
+                  borderRadius: T.radius.sm,
+                  backgroundColor: pressed ? T.bg.elevated : "transparent",
+                })}
+              >
+                <Settings size={18} color={T.text.muted} strokeWidth={1.5} />
               </Pressable>
             </View>
           </View>
           <EventBanner />
-
-          <SubTabBar
-            active={desktopSubTab}
-            onSelect={(k) => setDesktopSubTab(k as DesktopSubTab)}
-            tabs={SUB_TAB_LABELS}
-          />
-
+          <SubTabBar active={desktopSubTab} onSelect={(k) => setDesktopSubTab(k as DesktopSubTab)} tabs={DESKTOP_TABS} />
           <View style={{ flex: 1 }}>{renderDesktopSubTab()}</View>
         </View>
 
-        {offlineEarnedTokens > 0 && (
-          <WelcomeBackToast
-            earned={offlineEarnedTokens}
-            offlineSeconds={offlineEarnedSeconds}
-            onDismiss={clearOfflineToast}
-          />
-        )}
+        {offlineEarnedTokens > 0 && <WelcomeBackToast earned={offlineEarnedTokens} offlineSeconds={offlineEarnedSeconds} onDismiss={clearOfflineToast} />}
         <ProgressToast />
         <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </View>
     );
   }
 
-  // ── MOBILE LAYOUT ─────────────────────────────────────────────────────
-
   const renderMobileTab = () => {
     switch (mobileTab) {
-      case "NODE":
-        return <GraphicGamePanel />;
-      case "PACKAGES":
-        return <PackagesContent />;
-      case "ADVANCED":
-        return <AdvancedContent />;
-      case "BOOST":
-        return <BoostContent />;
-      case "PROGRESS":
-        return <ProgressContent />;
+      case "NODE": return <GraphicGamePanel />;
+      case "PACKAGES": return <PackagesContent />;
+      case "ADVANCED": return <AdvancedContent />;
+      case "BOOST": return <BoostContent />;
+      case "PROGRESS": return <ProgressContent />;
     }
   };
 
   return (
-    <View
-      style={{
-        flex: 1,
-        flexDirection: "column",
-        justifyContent: "space-between",
-        backgroundColor: "#080808",
-        height: Platform.OS === "web" ? ("100dvh" as any) : height,
-      }}
-    >
-      <View
-        style={{
-          padding: 16,
-          paddingTop: Math.max(insets.top, 20),
-          borderBottomWidth: 1,
-          borderColor: "#1a1a1a",
-          backgroundColor: "#060606",
-        }}
-      >
+    <View style={{
+      flex: 1, flexDirection: "column", justifyContent: "space-between",
+      backgroundColor: T.bg.base,
+      height: Platform.OS === "web" ? ("100dvh" as any) : height,
+    }}>
+      <View style={{
+        padding: T.space.lg, paddingTop: Math.max(insets.top, 20),
+        borderBottomWidth: 1, borderColor: T.border.subtle, backgroundColor: T.bg.deep,
+      }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ flex: 1 }}>
-            <TokenDisplay />
-          </View>
-          <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8, marginLeft: 8 }}>
-            <Settings size={18} color="#888" strokeWidth={1.5} />
+          <View style={{ flex: 1 }}><TokenDisplay /></View>
+          <Pressable
+            onPress={() => setSettingsOpen(true)}
+            style={({ pressed }) => ({
+              padding: T.space.sm, marginLeft: T.space.sm,
+              borderRadius: T.radius.sm,
+              backgroundColor: pressed ? T.bg.elevated : "transparent",
+            })}
+          >
+            <Settings size={18} color={T.text.muted} strokeWidth={1.5} />
           </Pressable>
         </View>
       </View>
       <EventBanner />
 
-      <View style={{ flex: 1, backgroundColor: "#080808" }}>
-        {renderMobileTab()}
-      </View>
+      <View style={{ flex: 1, backgroundColor: T.bg.base }}>{renderMobileTab()}</View>
 
-      <View
-        style={{
-          flexDirection: "row",
-          borderTopWidth: 1,
-          borderColor: "#1a1a1a",
-          backgroundColor: "#060606",
-          paddingBottom: Math.max(insets.bottom, 8),
-          paddingTop: 8,
-        }}
-      >
+      <View style={{
+        flexDirection: "row", borderTopWidth: 1, borderColor: T.border.subtle,
+        backgroundColor: T.bg.deep, paddingBottom: Math.max(insets.bottom, 8), paddingTop: T.space.xs,
+      }}>
         {MOBILE_TABS.map((t) => {
           const isActive = mobileTab === t.key;
           return (
             <Pressable
               key={t.key}
               onPress={() => setMobileTab(t.key)}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 12,
-                borderBottomWidth: 2,
-                borderBottomColor: isActive ? "#007acc" : "transparent",
-              }}
+              style={{ flex: 1, alignItems: "center", paddingVertical: T.space.md + 2, gap: 3 }}
             >
-              <NeonText
-                color={isActive ? "blue" : "white"}
-                size="sm"
-                style={{ opacity: isActive ? 1 : 0.4, fontSize: 13 }}
-              >
+              <t.Icon size={16} color={isActive ? T.accent.blue : T.text.muted} strokeWidth={isActive ? 2 : 1.5} />
+              <Text style={{
+                color: isActive ? T.accent.blue : T.text.muted,
+                fontSize: T.font.xs, fontWeight: isActive ? "700" : "500",
+                fontFamily: T.mono, letterSpacing: 0.5,
+              }}>
                 {t.label}
-              </NeonText>
+              </Text>
+              {isActive && (
+                <View style={{
+                  width: 4, height: 4, borderRadius: 2,
+                  backgroundColor: T.accent.blue, marginTop: 1,
+                }} />
+              )}
             </Pressable>
           );
         })}
       </View>
 
-      {offlineEarnedTokens > 0 && (
-        <WelcomeBackToast
-          earned={offlineEarnedTokens}
-          offlineSeconds={offlineEarnedSeconds}
-          onDismiss={clearOfflineToast}
-        />
-      )}
+      {offlineEarnedTokens > 0 && <WelcomeBackToast earned={offlineEarnedTokens} offlineSeconds={offlineEarnedSeconds} onDismiss={clearOfflineToast} />}
       <ProgressToast />
       <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
