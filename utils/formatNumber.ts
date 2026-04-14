@@ -30,6 +30,6 @@ export const formatNumber = (n: number): string => {
   }
 
   if (abs < 10) return n.toFixed(2);
-  if (abs < 1000) return n.toFixed(1);
+  if (abs < 1000) return Number.isInteger(n) ? n.toString() : n.toFixed(1);
   return Math.floor(n).toString();
 };

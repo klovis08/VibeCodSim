@@ -6,16 +6,15 @@ import { formatNumber } from "../../utils/formatNumber";
 const HOLD_DURATION = 2000; // 2 seconds hold-to-confirm
 
 export const RebootButton: React.FC = () => {
-  const neuralTokens = useGameStore((s) => s.neuralTokens);
+  const lifetimeTokens = useGameStore((s) => s.lifetimeTokens);
   const rebootCount = useGameStore((s) => s.rebootCount);
   const reboot = useGameStore((s) => s.reboot);
 
   const [holding, setHolding] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
-  const holdTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdAnimation = useRef<Animated.CompositeAnimation | null>(null);
 
-  const canReboot = neuralTokens >= REBOOT_THRESHOLD;
+  const canReboot = lifetimeTokens >= REBOOT_THRESHOLD;
 
   if (!canReboot) return null;
 
@@ -108,7 +107,7 @@ export const RebootButton: React.FC = () => {
                 fontFamily: "monospace",
               }}
             >
-              Vibe v{rebootCount + 1}.0.0 → +1 Overclock Level
+              Vibe v{rebootCount + 1}.0.0 → +1 Prestige Level
             </Text>
             <Text
               style={{

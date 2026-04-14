@@ -6,8 +6,11 @@ import {
   View,
   Text,
   ScrollView,
+  Modal,
+  TextInput,
+  Alert,
 } from "react-native";
-import { useGameStore, getEnergyTechCost } from "../store/gameStore";
+import { useGameStore, getEnergyTechCost, ACHIEVEMENT_DEFINITIONS } from "../store/gameStore";
 
 import { TokenDisplay } from "../components/game/TokenDisplay";
 import { UpgradeCard } from "../components/game/UpgradeCard";
@@ -18,8 +21,9 @@ import { GraphicGamePanel } from "../components/ui/GraphicGamePanel";
 import { WelcomeBackToast } from "../components/ui/WelcomeBackToast";
 import { ProgressToast } from "../components/ui/ProgressToast";
 import { NeonText } from "../components/ui/NeonText";
-import { Battery } from "lucide-react-native";
+import { Battery, Settings } from "lucide-react-native";
 import { formatNumber } from "../utils/formatNumber";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 type MobileTab = "NODE" | "PACKAGES" | "ADVANCED" | "BOOST" | "PROGRESS";
 type DesktopSubTab = "packages" | "advanced" | "boost" | "progress";
@@ -160,18 +164,15 @@ const AdvancedContent: React.FC = () => (
 const BoostContent: React.FC = () => {
   const energyDrinks = useGameStore((s) => s.energyDrinks);
   const techLevel = useGameStore((s) => s.energyTechLevel);
+  const prestigeLevel = useGameStore((s) => s.rebootPrestigeLevel);
   const rebootCount = useGameStore((s) => s.rebootCount);
   const purchaseEnergyUpgrade = useGameStore((s) => s.purchaseEnergyUpgrade);
   const cost = getEnergyTechCost(techLevel);
   const canAfford = energyDrinks >= cost;
   const isMaxed = techLevel >= 20;
 
-  const bonus = (
-    techLevel *
-    0.2 *
-    (1 / (1 + techLevel * 0.05)) *
-    100
-  ).toFixed(0);
+  const shopBonus = (techLevel * 0.2 * (1 / (1 + techLevel * 0.05)) * 100).toFixed(0);
+  const rebootBonus = (prestigeLevel * 0.15 * (1 / (1 + prestigeLevel * 0.03)) * 100).toFixed(0);
 
   return (
     <ScrollView style={{ flex: 1 }}>
@@ -223,7 +224,7 @@ const BoostContent: React.FC = () => {
                   fontFamily: "monospace",
                 }}
               >
-                Lv.{techLevel} (+{bonus}% income boost)
+                Lv.{techLevel} (+{shopBonus}% shop / +{rebootBonus}% prestige)
               </Text>
             </View>
           </View>
@@ -291,6 +292,452 @@ const BoostContent: React.FC = () => {
   );
 };
 
+const EventBanner: React.FC = () => {
+  const activeEvent = useGameStore((s) => s.activeEvent);
+  if (!activeEvent) return null;
+  const secsLeft = Math.max(0, Math.ceil((activeEvent.endsAt - Date.now()) / 1000));
+  const colors: Record<string, string> = {
+    code_rush: "#39FF14",
+    bug_swarm: "#FF073A",
+    refactor_window: "#F3F315",
+    coffee_break: "#4FC1FF",
+  };
+  const color = colors[activeEvent.id] ?? "#39FF14";
+  return (
+    <View
+      style={{
+        marginHorizontal: 16,
+        marginVertical: 6,
+        borderRadius: 6,
+        borderWidth: 1,
+        borderColor: color,
+        backgroundColor: `${color}15`,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        flexDirection: "row",
+        justifyContent: "space-between",
+        alignItems: "center",
+      }}
+    >
+      <View>
+        <Text style={{ color, fontWeight: "bold", fontSize: 13, fontFamily: "monospace" }}>
+          {activeEvent.title}
+        </Text>
+        <Text style={{ color: "#ccc", fontSize: 11, fontFamily: "monospace" }}>
+          {activeEvent.description}
+        </Text>
+      </View>
+      <Text style={{ color, fontWeight: "bold", fontSize: 14, fontFamily: "monospace" }}>
+        {secsLeft}s
+      </Text>
+    </View>
+  );
+};
+
+const AchievementsPanel: React.FC = () => {
+  const achievements = useGameStore((s) => s.achievements);
+  const categories = ["economy", "tapping", "upgrades", "meta", "secret"] as const;
+  const catLabels: Record<string, string> = {
+    economy: "Economy",
+    tapping: "Tapping",
+    upgrades: "Upgrades",
+    meta: "Meta",
+    secret: "Secret",
+  };
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+      <Text
+        style={{
+          color: "#F3F315",
+          fontSize: 12,
+          fontWeight: "bold",
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+          fontFamily: "monospace",
+          marginBottom: 8,
+        }}
+      >
+        Achievements ({achievements.length}/{ACHIEVEMENT_DEFINITIONS.length})
+      </Text>
+      {categories.map((cat) => {
+        const defs = ACHIEVEMENT_DEFINITIONS.filter((a) => a.category === cat);
+        if (defs.length === 0) return null;
+        return (
+          <View key={cat} style={{ marginBottom: 8 }}>
+            <Text
+              style={{
+                color: "#888",
+                fontSize: 10,
+                fontWeight: "bold",
+                letterSpacing: 1,
+                textTransform: "uppercase",
+                fontFamily: "monospace",
+                marginBottom: 4,
+              }}
+            >
+              {catLabels[cat]}
+            </Text>
+            {defs.map((ach) => {
+              const unlocked = achievements.includes(ach.id);
+              return (
+                <View
+                  key={ach.id}
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    paddingVertical: 4,
+                    paddingHorizontal: 8,
+                    borderRadius: 4,
+                    backgroundColor: unlocked ? "#1a2a1a" : "#111",
+                    marginBottom: 3,
+                    gap: 8,
+                  }}
+                >
+                  <Text style={{ fontSize: 14 }}>{unlocked ? "★" : "☆"}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        color: unlocked ? "#9fdf9f" : "#555",
+                        fontSize: 12,
+                        fontWeight: "bold",
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {ach.title}
+                    </Text>
+                    <Text
+                      style={{
+                        color: unlocked ? "#777" : "#333",
+                        fontSize: 10,
+                        fontFamily: "monospace",
+                      }}
+                    >
+                      {ach.description}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        );
+      })}
+    </View>
+  );
+};
+
+const StatsPanel: React.FC = () => {
+  const totalTaps = useGameStore((s) => s.totalTaps);
+  const totalTimePlayed = useGameStore((s) => s.totalTimePlayed);
+  const totalSparksCollected = useGameStore((s) => s.totalSparksCollected);
+  const totalBonusWordsClaimed = useGameStore((s) => s.totalBonusWordsClaimed);
+  const highestCombo = useGameStore((s) => s.highestCombo);
+  const rebootCount = useGameStore((s) => s.rebootCount);
+  const locPerSecond = useGameStore((s) => s.locPerSecond);
+  const lifetimeTokens = useGameStore((s) => s.lifetimeTokens);
+  const serverLevel = useGameStore((s) => s.serverLevel);
+  const autoCoderLevel = useGameStore((s) => s.autoCoderLevel);
+  const keyboardLevel = useGameStore((s) => s.keyboardLevel);
+
+  const hours = Math.floor(totalTimePlayed / 3600);
+  const mins = Math.floor((totalTimePlayed % 3600) / 60);
+
+  const statRow = (label: string, value: string) => (
+    <View
+      style={{
+        flexDirection: "row",
+        justifyContent: "space-between",
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+        borderBottomWidth: 1,
+        borderColor: "#1a1a1a",
+      }}
+    >
+      <Text style={{ color: "#888", fontSize: 11, fontFamily: "monospace" }}>{label}</Text>
+      <Text style={{ color: "#d4d4d4", fontSize: 11, fontFamily: "monospace", fontWeight: "bold" }}>
+        {value}
+      </Text>
+    </View>
+  );
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+      <Text
+        style={{
+          color: "#4FC1FF",
+          fontSize: 12,
+          fontWeight: "bold",
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+          fontFamily: "monospace",
+          marginBottom: 8,
+        }}
+      >
+        Statistics
+      </Text>
+      <View
+        style={{
+          borderRadius: 8,
+          borderWidth: 1,
+          borderColor: "#222",
+          backgroundColor: "#111",
+          overflow: "hidden",
+        }}
+      >
+        {statRow("Total Taps", totalTaps.toLocaleString())}
+        {statRow("Time Played", `${hours}h ${mins}m`)}
+        {statRow("Lifetime LoC", formatNumber(lifetimeTokens))}
+        {statRow("Current LoC/sec", formatNumber(locPerSecond))}
+        {statRow("Highest Combo", highestCombo.toString())}
+        {statRow("Sparks Collected", totalSparksCollected.toString())}
+        {statRow("Bonus Words Claimed", totalBonusWordsClaimed.toString())}
+        {statRow("Total Reboots", rebootCount.toString())}
+        <View style={{ padding: 8 }}>
+          <Text
+            style={{
+              color: "#666",
+              fontSize: 10,
+              fontFamily: "monospace",
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 4,
+            }}
+          >
+            LoC/sec Breakdown
+          </Text>
+          <Text style={{ color: "#777", fontSize: 10, fontFamily: "monospace" }}>
+            Server: +{(serverLevel * 0.5).toFixed(1)} | Auto-Coder: +{(autoCoderLevel * 0.3).toFixed(1)} | Keyboard: +{(keyboardLevel * 0.18).toFixed(2)}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const AutoBuyPanel: React.FC = () => {
+  const autoBuyEnabled = useGameStore((s) => s.autoBuyEnabled);
+  const toggleAutoBuy = useGameStore((s) => s.toggleAutoBuy);
+  const rebootCount = useGameStore((s) => s.rebootCount);
+
+  if (rebootCount < 1) return null;
+
+  const types = [
+    { key: "autoCoder", label: "Auto-Coder" },
+    { key: "server", label: "Server" },
+    { key: "keyboard", label: "Keyboard" },
+    { key: "aiPair", label: "AI Pair" },
+    { key: "gitAutopilot", label: "Git Autopilot" },
+    { key: "ciPipeline", label: "CI Pipeline" },
+    { key: "observability", label: "Observability" },
+  ];
+
+  return (
+    <View style={{ paddingHorizontal: 16, paddingVertical: 8 }}>
+      <Text
+        style={{
+          color: "#C586C0",
+          fontSize: 12,
+          fontWeight: "bold",
+          letterSpacing: 1.5,
+          textTransform: "uppercase",
+          fontFamily: "monospace",
+          marginBottom: 8,
+        }}
+      >
+        Auto-Buy (unlocked via reboot)
+      </Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+        {types.map((t) => {
+          const on = autoBuyEnabled[t.key] ?? false;
+          return (
+            <Pressable
+              key={t.key}
+              onPress={() => toggleAutoBuy(t.key)}
+              style={{
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 4,
+                borderWidth: 1,
+                borderColor: on ? "#39FF14" : "#333",
+                backgroundColor: on ? "#1a2a1a" : "#111",
+              }}
+            >
+              <Text
+                style={{
+                  color: on ? "#39FF14" : "#666",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  fontWeight: "bold",
+                }}
+              >
+                {t.label}: {on ? "ON" : "OFF"}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+};
+
+const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({
+  visible,
+  onClose,
+}) => {
+  const resetSave = useGameStore((s) => s.resetSave);
+  const exportSave = useGameStore((s) => s.exportSave);
+  const [exportString, setExportString] = useState("");
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  const handleExport = () => {
+    setExportString(exportSave());
+  };
+
+  const handleReset = () => {
+    if (!confirmReset) {
+      setConfirmReset(true);
+      return;
+    }
+    resetSave();
+    setConfirmReset(false);
+    onClose();
+  };
+
+  return (
+    <Modal visible={visible} transparent animationType="fade">
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.8)",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: 24,
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 400,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: "#333",
+            backgroundColor: "#111",
+            padding: 20,
+          }}
+        >
+          <Text
+            style={{
+              color: "#d4d4d4",
+              fontSize: 18,
+              fontWeight: "bold",
+              fontFamily: "monospace",
+              marginBottom: 16,
+              textAlign: "center",
+            }}
+          >
+            Settings
+          </Text>
+
+          <Text
+            style={{
+              color: "#888",
+              fontSize: 10,
+              fontFamily: "monospace",
+              textAlign: "center",
+              marginBottom: 16,
+            }}
+          >
+            VibeCodSim v1.0.0
+          </Text>
+
+          <Pressable
+            onPress={handleExport}
+            style={{
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 6,
+              backgroundColor: "#1a2a3a",
+              borderWidth: 1,
+              borderColor: "#2e405f",
+              marginBottom: 10,
+            }}
+          >
+            <Text style={{ color: "#4FC1FF", fontFamily: "monospace", fontSize: 13, textAlign: "center" }}>
+              Export Save
+            </Text>
+          </Pressable>
+
+          {exportString ? (
+            <View style={{ marginBottom: 10 }}>
+              <TextInput
+                value={exportString}
+                selectTextOnFocus
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#333",
+                  borderRadius: 4,
+                  padding: 8,
+                  color: "#999",
+                  fontSize: 10,
+                  fontFamily: "monospace",
+                  backgroundColor: "#0a0a0a",
+                  maxHeight: 80,
+                }}
+                multiline
+                editable={false}
+              />
+              <Text style={{ color: "#555", fontSize: 9, fontFamily: "monospace", marginTop: 4 }}>
+                Copy this string to back up your save
+              </Text>
+            </View>
+          ) : null}
+
+          <Pressable
+            onPress={handleReset}
+            style={{
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 6,
+              backgroundColor: confirmReset ? "#4a0000" : "#2a0005",
+              borderWidth: 1,
+              borderColor: "#FF073A",
+              marginBottom: 10,
+            }}
+          >
+            <Text
+              style={{
+                color: "#FF073A",
+                fontFamily: "monospace",
+                fontSize: 13,
+                textAlign: "center",
+                fontWeight: "bold",
+              }}
+            >
+              {confirmReset ? "TAP AGAIN TO CONFIRM RESET" : "Reset Save"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => { setConfirmReset(false); setExportString(""); onClose(); }}
+            style={{
+              paddingVertical: 10,
+              paddingHorizontal: 16,
+              borderRadius: 6,
+              backgroundColor: "#1a1a1a",
+              borderWidth: 1,
+              borderColor: "#333",
+            }}
+          >
+            <Text style={{ color: "#888", fontFamily: "monospace", fontSize: 13, textAlign: "center" }}>
+              Close
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const ProgressContent: React.FC = () => {
   const lifetimeTokens = useGameStore((s) => s.lifetimeTokens);
   const architecturePoints = useGameStore((s) => s.architecturePoints);
@@ -340,11 +787,32 @@ const ProgressContent: React.FC = () => {
           Architecture Points: {architecturePoints}
         </Text>
       </View>
+      <StatsPanel />
+      <AchievementsPanel />
+      <AutoBuyPanel />
       <MilestonePanel />
       <MetaTreePanel />
     </ScrollView>
   );
 };
+
+const LoadingScreen: React.FC = () => (
+  <View
+    style={{
+      flex: 1,
+      backgroundColor: "#080808",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <Text style={{ color: "#4FC1FF", fontSize: 18, fontFamily: "monospace", letterSpacing: 3 }}>
+      LOADING...
+    </Text>
+    <Text style={{ color: "#555", fontSize: 12, fontFamily: "monospace", marginTop: 8 }}>
+      Hydrating game state
+    </Text>
+  </View>
+);
 
 const GameScreen: React.FC = () => {
   const { height, width } = useWindowDimensions();
@@ -352,6 +820,9 @@ const GameScreen: React.FC = () => {
   const [desktopSubTab, setDesktopSubTab] =
     useState<DesktopSubTab>("packages");
   const masterTick = useGameStore((s) => s.masterTick);
+  const hasHydrated = useGameStore((s) => s.hasHydrated);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const insets = useSafeAreaInsets();
 
   const offlineEarnedTokens = useGameStore((s) => s.offlineEarnedTokens);
   const offlineEarnedSeconds = useGameStore((s) => s.offlineEarnedSeconds);
@@ -381,6 +852,8 @@ const GameScreen: React.FC = () => {
 
   const isDesktop = width > 768;
 
+  if (!hasHydrated) return <LoadingScreen />;
+
   // ── Desktop sub-tab content router ─────────────────────────────────────
 
   const renderDesktopSubTab = () => {
@@ -403,7 +876,7 @@ const GameScreen: React.FC = () => {
       <View
         style={{
           flexDirection: "row",
-          height: Platform.OS === "web" ? ("100vh" as any) : height,
+          height: Platform.OS === "web" ? ("100dvh" as any) : height,
           backgroundColor: "#080808",
         }}
       >
@@ -438,8 +911,16 @@ const GameScreen: React.FC = () => {
               backgroundColor: "#050505",
             }}
           >
-            <TokenDisplay />
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+              <View style={{ flex: 1 }}>
+                <TokenDisplay />
+              </View>
+              <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8, marginLeft: 8 }}>
+                <Settings size={18} color="#888" strokeWidth={1.5} />
+              </Pressable>
+            </View>
           </View>
+          <EventBanner />
 
           <SubTabBar
             active={desktopSubTab}
@@ -458,6 +939,7 @@ const GameScreen: React.FC = () => {
           />
         )}
         <ProgressToast />
+        <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
       </View>
     );
   }
@@ -486,20 +968,28 @@ const GameScreen: React.FC = () => {
         flexDirection: "column",
         justifyContent: "space-between",
         backgroundColor: "#080808",
-        height: Platform.OS === "web" ? ("100vh" as any) : height,
+        height: Platform.OS === "web" ? ("100dvh" as any) : height,
       }}
     >
       <View
         style={{
           padding: 16,
-          paddingTop: 48,
+          paddingTop: Math.max(insets.top, 20),
           borderBottomWidth: 1,
           borderColor: "#1a1a1a",
           backgroundColor: "#060606",
         }}
       >
-        <TokenDisplay />
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+          <View style={{ flex: 1 }}>
+            <TokenDisplay />
+          </View>
+          <Pressable onPress={() => setSettingsOpen(true)} style={{ padding: 8, marginLeft: 8 }}>
+            <Settings size={18} color="#888" strokeWidth={1.5} />
+          </Pressable>
+        </View>
       </View>
+      <EventBanner />
 
       <View style={{ flex: 1, backgroundColor: "#080808" }}>
         {renderMobileTab()}
@@ -511,7 +1001,7 @@ const GameScreen: React.FC = () => {
           borderTopWidth: 1,
           borderColor: "#1a1a1a",
           backgroundColor: "#060606",
-          paddingBottom: 24,
+          paddingBottom: Math.max(insets.bottom, 8),
           paddingTop: 8,
         }}
       >
@@ -524,7 +1014,7 @@ const GameScreen: React.FC = () => {
               style={{
                 flex: 1,
                 alignItems: "center",
-                paddingVertical: 6,
+                paddingVertical: 12,
                 borderBottomWidth: 2,
                 borderBottomColor: isActive ? "#007acc" : "transparent",
               }}
@@ -532,7 +1022,7 @@ const GameScreen: React.FC = () => {
               <NeonText
                 color={isActive ? "blue" : "white"}
                 size="sm"
-                style={{ opacity: isActive ? 1 : 0.4, fontSize: 11 }}
+                style={{ opacity: isActive ? 1 : 0.4, fontSize: 13 }}
               >
                 {t.label}
               </NeonText>
@@ -549,6 +1039,7 @@ const GameScreen: React.FC = () => {
         />
       )}
       <ProgressToast />
+      <SettingsModal visible={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </View>
   );
 };

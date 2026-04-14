@@ -1,5 +1,5 @@
-import React from "react";
-import { Pressable, View, Text } from "react-native";
+import React, { useRef } from "react";
+import { Pressable, View, Text, Animated } from "react-native";
 import { Terminal, Server, Keyboard, Lock, Cpu, GitBranch, Zap, Workflow, Radar } from "lucide-react-native";
 
 import { useGameStore, getTierUnlockRequirement, getUpgradeCostMultiplier } from "../../store/gameStore";
@@ -44,6 +44,8 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({
   const purchaseUpgrade = useGameStore((s) => s.purchaseUpgrade);
   const purchaseHiddenUpgrade = useGameStore((s) => s.purchaseHiddenUpgrade);
   const activateCloudBurst = useGameStore((s) => s.activateCloudBurst);
+
+  const flashOpacity = useRef(new Animated.Value(0)).current;
 
   // ── LOCKED STATE ──────────────────────────────────────────────────────────
   const lockedByLegacyThreshold = unlocksAt !== undefined && lifetimeTokens < unlocksAt;
@@ -212,6 +214,12 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({
     } else {
       purchaseUpgrade(type as "autoCoder" | "server" | "keyboard");
     }
+    flashOpacity.setValue(1);
+    Animated.timing(flashOpacity, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   };
 
   const accentColor =
@@ -277,8 +285,21 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({
         borderWidth: 1,
         borderColor: usesAdvancedAction ? (canAfford ? accentColor + "55" : "#333") : "#333333",
         backgroundColor: "#252526",
+        overflow: "hidden",
       }}
     >
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: "rgba(57, 255, 20, 0.15)",
+          opacity: flashOpacity,
+        }}
+      />
       <View style={{ flexDirection: "row", alignItems: "center", gap: 16 }}>
         <View style={{ backgroundColor: "#1e1e1e", borderRadius: 8, padding: 12 }}>
           {getIcon()}

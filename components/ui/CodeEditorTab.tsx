@@ -1,8 +1,6 @@
 import React, { useState } from "react";
 import { View, TextInput, Text } from "react-native";
 import { useGameStore } from "../../store/gameStore";
-import { NeonText } from "./NeonText";
-import { GlowContainer } from "./GlowContainer";
 import { StrainMeter } from "../game/StrainMeter";
 
 export const CodeEditorTab: React.FC = () => {
@@ -13,10 +11,12 @@ export const CodeEditorTab: React.FC = () => {
 
   const handleChangeText = (val: string) => {
     setText(val);
+    if (!activeBonusWord) return;
     const tokens = val.split(/[\s\n]+/);
-    const lastWord = tokens[tokens.length - 1] || tokens[tokens.length - 2] || ""; 
-    
-    claimBonusWord();
+    const lastWord = (tokens[tokens.length - 1] || "").toLowerCase();
+    if (lastWord === activeBonusWord.toLowerCase()) {
+      claimBonusWord();
+    }
   };
 
   return (
