@@ -148,6 +148,7 @@ interface GameActions {
   toggleAutoBuy: (type: string) => void;
   resetSave: () => void;
   exportSave: () => string;
+  importSave: (encoded: string) => { ok: true } | { ok: false; error: string };
 }
 
 type GameStore = GameState & GameActions;
@@ -1104,6 +1105,76 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } catch {
       return "";
     }
+  },
+
+  importSave: (encoded: string) => {
+    const trimmed = encoded.trim();
+    if (!trimmed) return { ok: false, error: "Empty save string." };
+
+    let raw: unknown;
+    try {
+      const json = atob(trimmed);
+      raw = JSON.parse(json);
+    } catch {
+      return { ok: false, error: "Invalid save format." };
+    }
+
+    if (typeof raw !== "object" || raw === null) {
+      return { ok: false, error: "Invalid save data." };
+    }
+
+    const record = raw as Record<string, unknown>;
+    if (typeof record.saveVersion !== "number") {
+      return { ok: false, error: "Save version missing or invalid." };
+    }
+
+    const now = Date.now();
+
+    // Apply validated persisted fields first.
+    set(validateSave(record));
+
+    // Recompute derived/runtime fields and clear ephemeral UI/gameplay fields.
+    const liveState = get();
+    const effectiveBurstActive =
+      liveState.cloudBurstEndsAt > 0 && now < liveState.cloudBurstEndsAt;
+    const snapshot = buildIncomeSnapshot(
+      { ...liveState, cloudBurstActive: effectiveBurstActive },
+      effectiveBurstActive
+    );
+
+    set({
+      locPerSecond: snapshot.passivePerSecond,
+      tapPower: snapshot.tapPower,
+      incomeMultiplier: snapshot.incomeMultiplier,
+      cloudBurstActive: effectiveBurstActive,
+      activeSparks: [],
+      activeBonusWord: null,
+      bonusWordExpiresAt: null,
+      bonusWordPosition: null,
+      activeEvent: null,
+      activeNotification: null,
+      offlineEarnedTokens: 0,
+      offlineEarnedSeconds: 0,
+      hasHydrated: true,
+      hydrationStarted: false,
+      lastTickTime: now,
+    });
+
+    void (async () => {
+      try {
+        const state = get();
+        const saveState = getPersistedState(state);
+        await AsyncStorage.multiSet([
+          [STORAGE_KEY_SAVE, JSON.stringify(saveState)],
+          [STORAGE_KEY_LAST_ACTIVE, now.toString()],
+        ]);
+        lastPersistedAt = now;
+      } catch {
+        // ignore persist failures
+      }
+    })();
+
+    return { ok: true };
   },
 }));
 

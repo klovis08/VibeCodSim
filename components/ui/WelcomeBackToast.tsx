@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Text, View } from "react-native";
 import { formatNumber } from "../../utils/formatNumber";
+import { USE_NATIVE_ANIM_DRIVER } from "../../utils/animatedNativeDriver";
 
 interface WelcomeBackToastProps {
   earned: number;
@@ -27,13 +28,13 @@ export const WelcomeBackToast: React.FC<WelcomeBackToastProps> = ({
     Animated.parallel([
       Animated.spring(translateY, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         friction: 6,
       }),
       Animated.timing(opacity, {
         toValue: 1,
         duration: 300,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_ANIM_DRIVER,
       }),
     ]).start();
 
@@ -43,12 +44,12 @@ export const WelcomeBackToast: React.FC<WelcomeBackToastProps> = ({
         Animated.timing(translateY, {
           toValue: 120,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         }),
         Animated.timing(opacity, {
           toValue: 0,
           duration: 300,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         }),
       ]).start(() => onDismiss());
     }, 3500);

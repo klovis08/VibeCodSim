@@ -88,7 +88,8 @@ export const TokenDisplay: React.FC = () => {
       }}>
         <Image
           source={require("../../assets/images/energy_drink.png")}
-          style={{ width: 16, height: 16, resizeMode: "contain" }}
+          resizeMode="contain"
+          style={{ width: 16, height: 16 }}
           accessibilityLabel="Energy drinks"
         />
         <Text style={{ color: T.accent.green, fontSize: T.font.lg, fontWeight: "bold", fontFamily: T.mono }}>

@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Text, View } from "react-native";
 import { useGameStore } from "../../store/gameStore";
+import { USE_NATIVE_ANIM_DRIVER } from "../../utils/animatedNativeDriver";
 
 export const ProgressToast: React.FC = () => {
   const notification = useGameStore((s) => s.activeNotification);
@@ -14,13 +15,13 @@ export const ProgressToast: React.FC = () => {
     Animated.parallel([
       Animated.spring(translateY, {
         toValue: 0,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         friction: 7,
       }),
       Animated.timing(opacity, {
         toValue: 1,
         duration: 220,
-        useNativeDriver: true,
+        useNativeDriver: USE_NATIVE_ANIM_DRIVER,
       }),
     ]).start();
 
@@ -29,12 +30,12 @@ export const ProgressToast: React.FC = () => {
         Animated.timing(translateY, {
           toValue: 120,
           duration: 240,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         }),
         Animated.timing(opacity, {
           toValue: 0,
           duration: 240,
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         }),
       ]).start(() => dismissNotification());
     }, 3000);

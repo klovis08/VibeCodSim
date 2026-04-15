@@ -3,6 +3,7 @@ import React, { useRef } from "react";
 import { Animated, Pressable, Text, View } from "react-native";
 import { T } from "../../constants/theme";
 import { getTierUnlockRequirement, getUpgradeCostMultiplier, useGameStore } from "../../store/gameStore";
+import { USE_NATIVE_ANIM_DRIVER } from "../../utils/animatedNativeDriver";
 import { formatNumber } from "../../utils/formatNumber";
 import type { UpgradeType } from "../../utils/scaling";
 import { getUpgradeCost, getUpgradeTierLabel } from "../../utils/scaling";
@@ -176,7 +177,7 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
     if (usesAdvanced) purchaseHiddenUpgrade(type as "aiPair" | "gitAutopilot" | "ciPipeline" | "observability");
     else purchaseUpgrade(type as "autoCoder" | "server" | "keyboard");
     flashOpacity.setValue(1);
-    Animated.timing(flashOpacity, { toValue: 0, duration: T.motion.normal, useNativeDriver: true }).start();
+    Animated.timing(flashOpacity, { toValue: 0, duration: T.motion.normal, useNativeDriver: USE_NATIVE_ANIM_DRIVER }).start();
   };
 
   const currentContribution =
@@ -197,7 +198,11 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
   const levelDots = Math.min(level, 20);
 
   return (
-    <View
+    <Pressable
+      onPress={handleBuy}
+      disabled={!canAfford || !tierUnlocked}
+      accessibilityLabel={`Install ${title} for ${formatNumber(cost)} LoC`}
+      accessibilityRole="button"
       style={{
         marginHorizontal: T.space.lg,
         marginBottom: T.space.md,
@@ -211,8 +216,8 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
       }}
     >
       <Animated.View
-        pointerEvents="none"
         style={{
+          pointerEvents: "none",
           position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
           backgroundColor: `${accent}20`,
           opacity: flashOpacity,
@@ -269,18 +274,15 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
           )}
         </View>
 
-        <Pressable
-          onPress={handleBuy}
-          disabled={!canAfford || !tierUnlocked}
-          style={({ pressed }) => ({
+        <View
+          pointerEvents="none"
+          style={{
             borderRadius: T.radius.md,
             paddingHorizontal: T.space.xl,
             paddingVertical: T.space.md,
             backgroundColor: T.upgradeButtonBg(type, canAfford && tierUnlocked),
             borderWidth: 1,
             borderColor: canAfford && tierUnlocked ? `${accent}66` : T.border.focus,
-            opacity: pressed ? 0.75 : 1,
-            transform: [{ scale: pressed ? 0.95 : 1 }],
             ...(canAfford && tierUnlocked ? {
               shadowColor: accent,
               shadowOffset: { width: 0, height: 0 },
@@ -290,9 +292,7 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
             } : {}),
             minWidth: 88,
             alignItems: "center" as const,
-          })}
-          accessibilityLabel={`Install ${title} for ${formatNumber(cost)} LoC`}
-          accessibilityRole="button"
+          }}
         >
           <Text style={{
             fontFamily: T.mono, fontSize: 9, fontWeight: "800",
@@ -308,8 +308,8 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
           <Text style={{ fontFamily: T.mono, fontSize: T.font.xs, color: canAfford ? T.text.secondary : T.text.disabled, marginTop: 2, textAlign: "center" }}>
             next {formatNumber(nextCost)}
           </Text>
-        </Pressable>
+        </View>
       </View>
-    </View>
+    </Pressable>
   );
 };

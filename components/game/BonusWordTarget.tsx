@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Animated, Pressable, Text, Easing } from "react-native";
 import { useGameStore } from "../../store/gameStore";
+import { USE_NATIVE_ANIM_DRIVER } from "../../utils/animatedNativeDriver";
 
 export const BonusWordTarget: React.FC = () => {
   const activeBonusWord = useGameStore((s) => s.activeBonusWord);
@@ -16,7 +17,7 @@ export const BonusWordTarget: React.FC = () => {
     // Pop in
     Animated.spring(scale, {
       toValue: 1,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_ANIM_DRIVER,
       friction: 4,
       tension: 120,
     }).start();
@@ -28,13 +29,13 @@ export const BonusWordTarget: React.FC = () => {
           toValue: 1,
           duration: 600,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         }),
         Animated.timing(glowOpacity, {
           toValue: 0.3,
           duration: 600,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
+          useNativeDriver: USE_NATIVE_ANIM_DRIVER,
         }),
       ])
     ).start();
@@ -50,7 +51,7 @@ export const BonusWordTarget: React.FC = () => {
     Animated.timing(scale, {
       toValue: 0,
       duration: 150,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_ANIM_DRIVER,
     }).start(() => {
       claimBonusWord();
     });

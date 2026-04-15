@@ -4,6 +4,7 @@ import { useGameStore } from "../../store/gameStore";
 import { InspirationSpark } from "../game/InspirationSpark";
 import { BonusWordTarget } from "../game/BonusWordTarget";
 import { formatNumber } from "../../utils/formatNumber";
+import { USE_NATIVE_ANIM_DRIVER } from "../../utils/animatedNativeDriver";
 import { T } from "../../constants/theme";
 
 type Particle = { id: string; value: number; x: number; y: number; color: string };
@@ -15,14 +16,14 @@ const LocParticle: React.FC<{ particle: Particle; onRemove: (id: string) => void
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(opacity, { toValue: 0, duration: T.motion.slow * 1.5, useNativeDriver: true }),
-      Animated.timing(translateY, { toValue: -56, duration: T.motion.slow * 1.5, useNativeDriver: true }),
-      Animated.timing(scale, { toValue: 0.7, duration: T.motion.slow * 1.5, useNativeDriver: true }),
+      Animated.timing(opacity, { toValue: 0, duration: T.motion.slow * 1.5, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
+      Animated.timing(translateY, { toValue: -56, duration: T.motion.slow * 1.5, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
+      Animated.timing(scale, { toValue: 0.7, duration: T.motion.slow * 1.5, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
     ]).start(({ finished }) => { if (finished) onRemove(particle.id); });
   }, [opacity, translateY, scale, onRemove, particle.id]);
 
   return (
-    <View pointerEvents="none" style={{ position: "absolute", left: `${particle.x}%`, bottom: `${particle.y}%`, width: 0, alignItems: "center" }}>
+    <View style={{ pointerEvents: "none", position: "absolute", left: `${particle.x}%`, bottom: `${particle.y}%`, width: 0, alignItems: "center" }}>
       <Animated.View style={{ opacity, transform: [{ translateY }, { scale }] }}>
         <Text style={{
           color: particle.color, fontWeight: "bold", fontSize: 15, fontFamily: T.mono,
@@ -42,22 +43,22 @@ const CORNER_COLOR = `${T.accent.blue}66`;
 const CornerBrackets: React.FC = () => (
   <>
     {/* Top-left */}
-    <View pointerEvents="none" style={{ position: "absolute", top: 6, left: 6, zIndex: 5 }}>
+    <View style={{ pointerEvents: "none", position: "absolute", top: 6, left: 6, zIndex: 5 }}>
       <View style={{ width: CORNER_SIZE, height: CORNER_THICK, backgroundColor: CORNER_COLOR }} />
       <View style={{ width: CORNER_THICK, height: CORNER_SIZE, backgroundColor: CORNER_COLOR }} />
     </View>
     {/* Top-right */}
-    <View pointerEvents="none" style={{ position: "absolute", top: 6, right: 6, zIndex: 5, alignItems: "flex-end" }}>
+    <View style={{ pointerEvents: "none", position: "absolute", top: 6, right: 6, zIndex: 5, alignItems: "flex-end" }}>
       <View style={{ width: CORNER_SIZE, height: CORNER_THICK, backgroundColor: CORNER_COLOR }} />
       <View style={{ width: CORNER_THICK, height: CORNER_SIZE, backgroundColor: CORNER_COLOR, alignSelf: "flex-end" }} />
     </View>
     {/* Bottom-left */}
-    <View pointerEvents="none" style={{ position: "absolute", bottom: 6, left: 6, zIndex: 5, justifyContent: "flex-end" }}>
+    <View style={{ pointerEvents: "none", position: "absolute", bottom: 6, left: 6, zIndex: 5, justifyContent: "flex-end" }}>
       <View style={{ width: CORNER_THICK, height: CORNER_SIZE, backgroundColor: CORNER_COLOR }} />
       <View style={{ width: CORNER_SIZE, height: CORNER_THICK, backgroundColor: CORNER_COLOR }} />
     </View>
     {/* Bottom-right */}
-    <View pointerEvents="none" style={{ position: "absolute", bottom: 6, right: 6, zIndex: 5, alignItems: "flex-end", justifyContent: "flex-end" }}>
+    <View style={{ pointerEvents: "none", position: "absolute", bottom: 6, right: 6, zIndex: 5, alignItems: "flex-end", justifyContent: "flex-end" }}>
       <View style={{ width: CORNER_THICK, height: CORNER_SIZE, backgroundColor: CORNER_COLOR, alignSelf: "flex-end" }} />
       <View style={{ width: CORNER_SIZE, height: CORNER_THICK, backgroundColor: CORNER_COLOR }} />
     </View>
@@ -69,8 +70,8 @@ const PulsingCTA: React.FC<{ onPress?: () => void }> = ({ onPress }) => {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.7, duration: 1200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
+        Animated.timing(pulseAnim, { toValue: 0.7, duration: 1200, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
       ])
     );
     loop.start();
@@ -120,8 +121,8 @@ export const GraphicGamePanel: React.FC = () => {
   useEffect(() => {
     if (comboCount > prevCombo.current && comboCount > 0) {
       Animated.sequence([
-        Animated.spring(comboScale, { toValue: 1.15, friction: 3, tension: 200, useNativeDriver: true }),
-        Animated.spring(comboScale, { toValue: 1, friction: 5, tension: 120, useNativeDriver: true }),
+        Animated.spring(comboScale, { toValue: 1.15, friction: 3, tension: 200, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
+        Animated.spring(comboScale, { toValue: 1, friction: 5, tension: 120, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
       ]).start();
     }
     prevCombo.current = comboCount;
@@ -153,7 +154,8 @@ export const GraphicGamePanel: React.FC = () => {
   const strainColor = isBurnedOut ? T.accent.red : strainLevel > 80 ? T.accent.red : strainLevel > 50 ? T.accent.yellow : T.accent.green;
 
   const scanlines = isBurnedOut ? Array.from({ length: 12 }).map((_, i) => (
-    <View key={i} pointerEvents="none" style={{
+    <View key={i} style={{
+      pointerEvents: "none",
       position: "absolute", left: 0, right: 0,
       top: `${(i + 1) * 8}%`, height: 1,
       backgroundColor: "rgba(255,0,0,0.12)",
@@ -226,7 +228,8 @@ export const GraphicGamePanel: React.FC = () => {
         })}
       >
         {/* Strain bar at very top of tap area */}
-        <View pointerEvents="none" style={{
+        <View style={{
+          pointerEvents: "none",
           position: "absolute", top: 0, left: 0, right: 0,
           height: 4, zIndex: 6,
           backgroundColor: "rgba(0,0,0,0.3)",
@@ -240,7 +243,8 @@ export const GraphicGamePanel: React.FC = () => {
 
         <Image
           source={require("../../assets/images/programmer.png")}
-          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", resizeMode: "cover", opacity: 0.75 }}
+          resizeMode="cover"
+          style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", opacity: 0.75 }}
         />
 
         <CornerBrackets />
@@ -253,9 +257,9 @@ export const GraphicGamePanel: React.FC = () => {
 
         {isBurnedOut && (
           <View
-            pointerEvents="none"
             accessibilityLiveRegion="polite"
             style={{
+              pointerEvents: "none",
               position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
               backgroundColor: "rgba(80,0,0,0.5)",
               alignItems: "center", justifyContent: "center", zIndex: 15,

@@ -28,6 +28,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
+import { USE_NATIVE_ANIM_DRIVER } from "../utils/animatedNativeDriver";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MetaTreePanel } from "../components/game/MetaTreePanel";
 import { MilestonePanel } from "../components/game/MilestonePanel";
@@ -465,7 +466,9 @@ const AutoBuyPanel: React.FC = () => {
 const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ visible, onClose }) => {
   const resetSave = useGameStore((s) => s.resetSave);
   const exportSave = useGameStore((s) => s.exportSave);
+  const importSave = useGameStore((s) => s.importSave);
   const [exportString, setExportString] = useState("");
+  const [importError, setImportError] = useState<string | null>(null);
   const [resetInput, setResetInput] = useState("");
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
@@ -473,6 +476,66 @@ const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ vi
     const str = exportSave();
     setExportString(str);
     try { Clipboard.setString(str); } catch { }
+  };
+
+  const handleDownloadExport = () => {
+    const str = exportSave();
+    setExportString(str);
+    setImportError(null);
+
+    if (!str) return;
+
+    if (Platform.OS !== "web") {
+      try { Clipboard.setString(str); } catch { }
+      return;
+    }
+
+    try {
+      const blob = new Blob([str], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "vibecodesim-save.txt";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch {
+      try { Clipboard.setString(str); } catch { }
+    }
+  };
+
+  const handleImportPickFile = () => {
+    if (Platform.OS !== "web") return;
+    setImportError(null);
+
+    try {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".txt,text/plain";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const res = importSave(text);
+          if (res.ok) {
+            setExportString("");
+            setImportError(null);
+            setShowResetConfirm(false);
+            setResetInput("");
+            onClose();
+          } else {
+            setImportError(res.error);
+          }
+        } catch {
+          setImportError("Failed to read file.");
+        }
+      };
+      input.click();
+    } catch {
+      setImportError("Import is not supported in this browser.");
+    }
   };
 
   const handleReset = () => {
@@ -488,6 +551,7 @@ const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ vi
     setShowResetConfirm(false);
     setResetInput("");
     setExportString("");
+    setImportError(null);
     onClose();
   };
 
@@ -516,7 +580,7 @@ const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ vi
             <View style={{ height: 1, backgroundColor: T.border.subtle, marginBottom: T.space.lg }} />
 
             <Pressable
-              onPress={handleExport}
+              onPress={Platform.OS === "web" ? handleDownloadExport : handleExport}
               style={({ pressed }) => ({
                 paddingVertical: T.space.md, paddingHorizontal: T.space.lg,
                 borderRadius: T.radius.sm, backgroundColor: pressed ? "#1a3a5a" : "#1a2a3a",
@@ -524,7 +588,7 @@ const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ vi
               })}
             >
               <Text style={{ color: T.accent.blueAlt, fontFamily: T.mono, fontSize: T.font.sm, textAlign: "center", fontWeight: "600" }}>
-                Export Save (Copy to Clipboard)
+                {Platform.OS === "web" ? "Export Save (Download .txt)" : "Export Save (Copy to Clipboard)"}
               </Text>
             </Pressable>
 
@@ -541,8 +605,31 @@ const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ vi
                   multiline editable={false}
                 />
                 <Text style={{ color: T.text.disabled, fontSize: 9, fontFamily: T.mono, marginTop: T.space.xs }}>
-                  Copied! Save this string to back up your progress.
+                  {Platform.OS === "web" ? "Downloaded! Keep this file to back up your progress." : "Copied! Save this string to back up your progress."}
                 </Text>
+              </View>
+            ) : null}
+
+            {Platform.OS === "web" ? (
+              <View style={{ marginBottom: T.space.sm }}>
+                <Pressable
+                  onPress={handleImportPickFile}
+                  style={({ pressed }) => ({
+                    paddingVertical: T.space.md, paddingHorizontal: T.space.lg,
+                    borderRadius: T.radius.sm, backgroundColor: pressed ? "#2a2a1a" : "#1f1f12",
+                    borderWidth: 1, borderColor: "#5a5a2e",
+                    marginBottom: importError ? T.space.xs : 0,
+                  })}
+                >
+                  <Text style={{ color: T.accent.yellow, fontFamily: T.mono, fontSize: T.font.sm, textAlign: "center", fontWeight: "600" }}>
+                    Import Save (Pick .txt)
+                  </Text>
+                </Pressable>
+                {importError ? (
+                  <Text style={{ color: T.accent.red, fontSize: 10, fontFamily: T.mono, textAlign: "center" }}>
+                    {importError}
+                  </Text>
+                ) : null}
               </View>
             ) : null}
 
@@ -641,8 +728,8 @@ const LoadingScreen: React.FC = () => {
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1, duration: 800, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 800, useNativeDriver: USE_NATIVE_ANIM_DRIVER }),
       ])
     );
     loop.start();
