@@ -38,6 +38,7 @@ import { UpgradeCard } from "../components/game/UpgradeCard";
 import { GraphicGamePanel } from "../components/ui/GraphicGamePanel";
 import { ProgressToast } from "../components/ui/ProgressToast";
 import { WelcomeBackToast } from "../components/ui/WelcomeBackToast";
+import { BuyMultiplierToggle } from "../components/ui/BuyMultiplierToggle";
 import { T } from "../constants/theme";
 import { ACHIEVEMENT_DEFINITIONS, getEnergyTechCost, useGameStore } from "../store/gameStore";
 import { formatNumber } from "../utils/formatNumber";
@@ -109,7 +110,8 @@ const SubTabBar = ({
 );
 
 const PackagesContent: React.FC = () => (
-  <ScrollView style={{ flex: 1, paddingTop: T.space.xs }}>
+  <ScrollView style={{ flex: 1, paddingTop: T.space.md }}>
+    <BuyMultiplierToggle />
     <Text style={{
       paddingHorizontal: T.space.lg, color: T.text.muted,
       textTransform: "uppercase", fontSize: T.font.xs, fontWeight: "bold",
@@ -124,7 +126,8 @@ const PackagesContent: React.FC = () => (
 );
 
 const AdvancedContent: React.FC = () => (
-  <ScrollView style={{ flex: 1, paddingTop: T.space.xs }}>
+  <ScrollView style={{ flex: 1, paddingTop: T.space.md }}>
+    <BuyMultiplierToggle />
     <Text style={{
       paddingHorizontal: T.space.lg, color: T.text.muted,
       textTransform: "uppercase", fontSize: T.font.xs, fontWeight: "bold",
