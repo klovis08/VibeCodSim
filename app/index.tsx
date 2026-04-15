@@ -1,33 +1,45 @@
-import React, { useState, useEffect, useRef } from "react";
 import {
-  Platform,
-  Pressable,
-  useWindowDimensions,
-  View,
-  Text,
-  ScrollView,
-  Modal,
-  TextInput,
+  BarChart3,
+  Battery,
+  Box,
+  Bug,
+  Coffee,
+  Cpu,
+  Flame,
+  Layers,
+  Monitor,
+  Package,
+  Rocket,
+  Scissors,
+  Settings,
+  TrendingUp,
+  Zap,
+} from "lucide-react-native";
+import React, { useEffect, useRef, useState } from "react";
+import {
   Animated,
   Clipboard,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  useWindowDimensions,
+  View,
 } from "react-native";
-import { useGameStore, getEnergyTechCost, ACHIEVEMENT_DEFINITIONS } from "../store/gameStore";
-import { TokenDisplay } from "../components/game/TokenDisplay";
-import { UpgradeCard } from "../components/game/UpgradeCard";
-import { RebootButton } from "../components/game/RebootButton";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MetaTreePanel } from "../components/game/MetaTreePanel";
 import { MilestonePanel } from "../components/game/MilestonePanel";
+import { RebootButton } from "../components/game/RebootButton";
+import { TokenDisplay } from "../components/game/TokenDisplay";
+import { UpgradeCard } from "../components/game/UpgradeCard";
 import { GraphicGamePanel } from "../components/ui/GraphicGamePanel";
-import { WelcomeBackToast } from "../components/ui/WelcomeBackToast";
 import { ProgressToast } from "../components/ui/ProgressToast";
-import {
-  Battery, Settings, Package, Layers, Zap, TrendingUp,
-  Monitor, Box, Cpu, Rocket, BarChart3,
-  Flame, Bug, Scissors, Coffee,
-} from "lucide-react-native";
-import { formatNumber } from "../utils/formatNumber";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { WelcomeBackToast } from "../components/ui/WelcomeBackToast";
 import { T } from "../constants/theme";
+import { ACHIEVEMENT_DEFINITIONS, getEnergyTechCost, useGameStore } from "../store/gameStore";
+import { formatNumber } from "../utils/formatNumber";
 
 type MobileTab = "NODE" | "PACKAGES" | "ADVANCED" | "BOOST" | "PROGRESS";
 type DesktopSubTab = "packages" | "advanced" | "boost" | "progress";
@@ -121,7 +133,7 @@ const AdvancedContent: React.FC = () => (
     </Text>
     <UpgradeCard type="aiPair" title="AI Pair Programmer" unlocksAt={500} description="-15% strain per level" />
     <UpgradeCard type="gitAutopilot" title="Git Autopilot" unlocksAt={5000} description="+10% passive LoC/sec per level" />
-    <UpgradeCard type="cloudBurst" title="Cloud Burst" unlocksAt={50000} description="2x income for 30s (costs 1 can)" />
+    <UpgradeCard type="cloudBurst" title="Cloud Burst" unlocksAt={50000} description="Toggle 2x LoC (drains 1% cans/sec)" />
     <Text style={{
       paddingHorizontal: T.space.lg, color: T.text.muted,
       textTransform: "uppercase", fontSize: T.font.xs, fontWeight: "bold",
@@ -141,6 +153,7 @@ const BoostContent: React.FC = () => {
   const rebootCount = useGameStore((s) => s.rebootCount);
   const purchaseEnergyUpgrade = useGameStore((s) => s.purchaseEnergyUpgrade);
   const cost = getEnergyTechCost(techLevel);
+  const nextCost = getEnergyTechCost(techLevel + 1);
   const canAfford = energyDrinks >= cost;
   const isMaxed = techLevel >= 20;
   const shopBonus = (techLevel * 0.2 * (1 / (1 + techLevel * 0.05)) * 100).toFixed(0);
@@ -159,10 +172,10 @@ const BoostContent: React.FC = () => {
             <View style={{ backgroundColor: T.bg.surface, borderRadius: T.radius.md, padding: T.space.md, borderWidth: 1, borderColor: T.border.subtle }}>
               <Battery size={22} color={canAfford ? T.accent.green : T.text.muted} strokeWidth={1.5} />
             </View>
-            <View>
+            <View style={{ flex: 1 }}>
               <Text style={{ color: T.text.primary, fontWeight: "600", fontSize: T.font.lg, fontFamily: T.mono }}>Overclock Engine</Text>
-              <Text style={{ color: T.text.secondary, fontSize: T.font.sm, marginTop: T.space.xs, fontFamily: T.mono }}>
-                Lv.{techLevel} (+{shopBonus}% shop / +{rebootBonus}% prestige)
+              <Text style={{ color: T.text.muted, fontSize: T.font.xs, marginTop: T.space.xs, fontFamily: T.mono }}>
+                Lv.{techLevel} — +{shopBonus}% shop / +{rebootBonus}% prestige
               </Text>
             </View>
           </View>
@@ -170,14 +183,32 @@ const BoostContent: React.FC = () => {
             onPress={purchaseEnergyUpgrade}
             disabled={!canAfford || isMaxed}
             style={({ pressed }) => ({
-              borderRadius: T.radius.sm, paddingHorizontal: T.space.xl, paddingVertical: T.space.md,
+              borderRadius: T.radius.md, paddingHorizontal: T.space.xl, paddingVertical: T.space.md,
               backgroundColor: isMaxed ? "#1a1a00" : canAfford ? "#1b5e20" : T.bg.elevated,
-              opacity: pressed ? 0.8 : 1,
+              borderWidth: 1,
+              borderColor: isMaxed ? `${T.accent.yellow}44` : canAfford ? `${T.accent.green}66` : T.border.focus,
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+              minWidth: 88,
+              alignItems: "center" as const,
             })}
           >
-            <Text style={{ fontFamily: T.mono, fontSize: T.font.base, color: isMaxed ? T.accent.yellow : canAfford ? T.accent.green : T.text.muted, fontWeight: "600" }}>
-              {isMaxed ? "MAXED" : `drink(${formatNumber(cost)})`}
+            <Text style={{
+              fontFamily: T.mono, fontSize: 9, fontWeight: "800",
+              color: isMaxed ? T.accent.yellow : canAfford ? T.accent.green : T.text.disabled,
+              letterSpacing: 2, textTransform: "uppercase", textAlign: "center",
+              marginBottom: 3,
+            }}>
+              {isMaxed ? "MAXED" : "DRINK"}
             </Text>
+            <Text style={{ fontFamily: T.mono, fontSize: T.font.sm + 1, color: isMaxed ? T.accent.yellow : canAfford ? "#fff" : T.text.muted, fontWeight: "700", textAlign: "center" }}>
+              {isMaxed ? "MAX" : formatNumber(cost)}
+            </Text>
+            {!isMaxed && (
+              <Text style={{ fontFamily: T.mono, fontSize: T.font.xs, color: canAfford ? T.text.secondary : T.text.disabled, marginTop: 2, textAlign: "center" }}>
+                next {formatNumber(nextCost)}
+              </Text>
+            )}
           </Pressable>
         </View>
 
@@ -441,7 +472,7 @@ const SettingsModal: React.FC<{ visible: boolean; onClose: () => void }> = ({ vi
   const handleExport = () => {
     const str = exportSave();
     setExportString(str);
-    try { Clipboard.setString(str); } catch {}
+    try { Clipboard.setString(str); } catch { }
   };
 
   const handleReset = () => {

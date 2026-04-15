@@ -1,12 +1,12 @@
-import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { create } from "zustand";
+import { gameMechanics } from "../utils/mechanics";
 import {
   getTierUnlockRequirement,
   getUpgradeCost,
   getUpgradeUnlockRequirement,
   type UpgradeType,
 } from "../utils/scaling";
-import { gameMechanics } from "../utils/mechanics";
 
 export interface Spark {
   id: string;
@@ -702,7 +702,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const deltaSeconds = Math.max(0, Math.min(1.5, (timestamp - state.lastTickTime) / 1000));
     const meta = getMetaEffects(state);
-    const burstStillActive = state.cloudBurstEndsAt > timestamp;
+    // e ndryshova ket karllikun e bona si toggle se spo punote sic ishte bo me perpara
+    let burstStillActive = state.cloudBurstActive;
+    let newEnergyDrinks = state.energyDrinks;
+    if (burstStillActive) {
+      const drain = newEnergyDrinks * 0.01 * deltaSeconds;
+      newEnergyDrinks = Math.max(0, newEnergyDrinks - drain);
+      if (newEnergyDrinks < 0.01) {
+        newEnergyDrinks = 0;
+        burstStillActive = false;
+      }
+    }
     const income = buildIncomeSnapshot(state, burstStillActive);
     const earnedTokens = income.passivePerSecond * deltaSeconds;
 
@@ -798,6 +808,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       bonusWordExpiresAt: newBonusWordExpiresAt,
       bonusWordPosition: newBonusWordPosition,
       cloudBurstActive: burstStillActive,
+      energyDrinks: newEnergyDrinks,
       lastTickTime: timestamp,
       comboCount: newCombo,
       totalTimePlayed: state.totalTimePlayed + deltaSeconds,
@@ -952,19 +963,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   activateCloudBurst: () => {
     const state = get();
-    const now = Date.now();
+    if (state.cloudBurstActive) {
+      set({ cloudBurstActive: false });
+      void persistSnapshot(get());
+      return;
+    }
+
     if (state.energyDrinks < 1) return;
-    if (state.cloudBurstCooldown > now) return;
-
-    const meta = getMetaEffects(state);
-    const duration = CLOUD_BURST_DURATION + meta.cloudBurstDurationBonus;
-
-    set({
-      energyDrinks: state.energyDrinks - 1,
-      cloudBurstActive: true,
-      cloudBurstEndsAt: now + duration * 1000,
-      cloudBurstCooldown: now + CLOUD_BURST_COOLDOWN * 1000,
-    });
+    set({ cloudBurstActive: true });
     void persistSnapshot(get());
   },
 
@@ -1102,12 +1108,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
 }));
 
 export {
-  REBOOT_THRESHOLD,
-  getEnergyTechCost,
-  getUpgradeCostMultiplier,
-  META_NODE_DEFINITIONS,
-  MILESTONES,
   ACHIEVEMENT_DEFINITIONS,
-  EVENT_DEFINITIONS,
-  getTierUnlockRequirement,
+  EVENT_DEFINITIONS, getEnergyTechCost, getTierUnlockRequirement, getUpgradeCostMultiplier,
+  META_NODE_DEFINITIONS,
+  MILESTONES, REBOOT_THRESHOLD
 };
+

@@ -1,11 +1,11 @@
+import { Cpu, GitBranch, Keyboard, Lock, Radar, Server, Terminal, Workflow, Zap } from "lucide-react-native";
 import React, { useRef } from "react";
-import { Pressable, View, Text, Animated, Platform } from "react-native";
-import { Terminal, Server, Keyboard, Lock, Cpu, GitBranch, Zap, Workflow, Radar } from "lucide-react-native";
-import { useGameStore, getTierUnlockRequirement, getUpgradeCostMultiplier } from "../../store/gameStore";
-import { getUpgradeCost, getUpgradeTierLabel } from "../../utils/scaling";
-import { formatNumber } from "../../utils/formatNumber";
+import { Animated, Pressable, Text, View } from "react-native";
 import { T } from "../../constants/theme";
+import { getTierUnlockRequirement, getUpgradeCostMultiplier, useGameStore } from "../../store/gameStore";
+import { formatNumber } from "../../utils/formatNumber";
 import type { UpgradeType } from "../../utils/scaling";
+import { getUpgradeCost, getUpgradeTierLabel } from "../../utils/scaling";
 
 interface UpgradeCardProps {
   type: "autoCoder" | "server" | "keyboard" | "aiPair" | "gitAutopilot" | "cloudBurst" | "ciPipeline" | "observability";
@@ -21,7 +21,6 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
   const milestoneClaims = useGameStore((s) => s.milestoneClaims);
   const unlockedMetaNodes = useGameStore((s) => s.unlockedMetaNodes);
   const energyDrinks = useGameStore((s) => s.energyDrinks);
-  const cloudBurstCooldown = useGameStore((s) => s.cloudBurstCooldown);
   const cloudBurstActive = useGameStore((s) => s.cloudBurstActive);
 
   const level = useGameStore((s) => {
@@ -88,10 +87,8 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
   }
 
   if (type === "cloudBurst") {
-    const now = Date.now();
-    const onCooldown = cloudBurstCooldown > now;
-    const cooldownSecsLeft = onCooldown ? Math.ceil((cloudBurstCooldown - now) / 1000) : 0;
-    const canActivate = !onCooldown && !cloudBurstActive && energyDrinks >= 1;
+    const canToggleOn = !cloudBurstActive && energyDrinks >= 1;
+    const canInteract = cloudBurstActive || canToggleOn;
 
     return (
       <View style={{
@@ -101,35 +98,52 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
         borderRadius: T.radius.md,
         borderWidth: 1,
         borderLeftWidth: 3,
-        borderLeftColor: cloudBurstActive ? T.accent.green : canActivate ? T.accent.blueAlt : T.border.default,
+        borderLeftColor: cloudBurstActive ? T.accent.green : canToggleOn ? T.accent.blueAlt : T.border.default,
         borderColor: cloudBurstActive ? `${T.accent.green}55` : T.border.default,
         backgroundColor: T.bg.overlay,
       }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: T.space.lg }}>
           <View style={{ backgroundColor: T.bg.surface, borderRadius: T.radius.md, padding: T.space.md }}>
-            <Zap size={24} color={cloudBurstActive ? T.accent.green : canActivate ? T.accent.blueAlt : T.text.muted} strokeWidth={1.5} />
+            <Zap size={24} color={cloudBurstActive ? T.accent.green : canToggleOn ? T.accent.blueAlt : T.text.muted} strokeWidth={1.5} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ fontSize: T.font.lg, fontWeight: "600", color: cloudBurstActive ? T.accent.green : T.text.primary, fontFamily: T.mono }}>
               {title}
             </Text>
-            <Text style={{ color: T.text.secondary, fontSize: T.font.sm, marginTop: T.space.xs, fontFamily: T.mono }}>
-              {cloudBurstActive ? "2x ACTIVE" : onCooldown ? `Cooldown: ${cooldownSecsLeft}s` : description ?? "2x income for 30s"}
+            <Text style={{
+              color: T.text.muted, fontSize: T.font.xs, marginTop: T.space.xs, fontFamily: T.mono, minHeight: 30
+            }}>
+              {cloudBurstActive
+                ? `2x LoC — draining 1%/sec (${Math.floor(energyDrinks)} cans left)`
+                : `Toggle 2x LoC production (drains 1% cans/sec)`}
             </Text>
           </View>
           <Pressable
             onPress={activateCloudBurst}
-            disabled={!canActivate}
+            disabled={!canInteract}
             style={({ pressed }) => ({
-              borderRadius: T.radius.sm,
-              paddingHorizontal: T.space.xl,
+              borderRadius: T.radius.md,
               paddingVertical: T.space.md,
-              backgroundColor: canActivate ? "#0e639c" : T.bg.elevated,
-              opacity: pressed ? 0.8 : 1,
+              backgroundColor: cloudBurstActive ? "#1b5e20" : canToggleOn ? "#0e639c" : T.bg.elevated,
+              borderWidth: 1,
+              borderColor: cloudBurstActive ? `${T.accent.green}66` : canToggleOn ? `${T.accent.blueAlt}66` : T.border.focus,
+              opacity: pressed ? 0.75 : 1,
+              transform: [{ scale: pressed ? 0.95 : 1 }],
+              width: 110,
+              alignItems: "center" as const,
+              justifyContent: "center" as const,
             })}
           >
-            <Text style={{ fontFamily: T.mono, fontSize: T.font.base, color: canActivate ? "#fff" : T.text.muted, fontWeight: "600" }}>
-              {canActivate ? "activate" : onCooldown ? "wait..." : "need can"}
+            <Text style={{
+              fontFamily: T.mono, fontSize: 9, fontWeight: "800",
+              color: cloudBurstActive ? T.accent.green : canToggleOn ? T.accent.blueAlt : T.text.disabled,
+              letterSpacing: 2, textTransform: "uppercase", textAlign: "center",
+              marginBottom: 3,
+            }}>
+              {cloudBurstActive ? "ACTIVE" : "BOOST"}
+            </Text>
+            <Text style={{ fontFamily: T.mono, fontSize: T.font.sm + 1, color: canInteract ? "#fff" : T.text.muted, fontWeight: "700", textAlign: "center" }}>
+              {cloudBurstActive ? "ON" : "OFF"}
             </Text>
           </Pressable>
         </View>
@@ -167,24 +181,24 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
 
   const currentContribution =
     type === "autoCoder" ? `+${Math.round(level * 0.3)}/sec, +${Math.round(level * 0.5)} tap`
-    : type === "server" ? `+${Math.round(level * 0.5)}/sec`
-    : type === "keyboard" ? `+${Math.round(level * 0.18)}/sec, +${Math.round(level * 0.08)} tap`
-    : type === "aiPair" ? `-${Math.min(80, level * 15)}% strain`
-    : type === "gitAutopilot" ? `+${level * 10}% passive`
-    : type === "ciPipeline" ? `+${level * 20}% passive`
-    : `+${level * 35}% global`;
+      : type === "server" ? `+${Math.round(level * 0.5)}/sec`
+        : type === "keyboard" ? `+${Math.round(level * 0.18)}/sec, +${Math.round(level * 0.08)} tap`
+          : type === "aiPair" ? `-${Math.min(80, level * 15)}% strain`
+            : type === "gitAutopilot" ? `+${level * 10}% passive`
+              : type === "ciPipeline" ? `+${level * 20}% passive`
+                : `+${level * 35}% global`;
 
   const nextGain =
     type === "autoCoder" ? "+0.30/sec, +0.50 tap" : type === "server" ? "+0.50/sec"
-    : type === "keyboard" ? "+0.18/sec, +0.08 tap" : type === "aiPair" ? "-15% strain"
-    : type === "gitAutopilot" ? "+10% passive" : type === "ciPipeline" ? "+20% passive"
-    : "+35% global";
+      : type === "keyboard" ? "+0.18/sec, +0.08 tap" : type === "aiPair" ? "-15% strain"
+        : type === "gitAutopilot" ? "+10% passive" : type === "ciPipeline" ? "+20% passive"
+          : "+35% global";
 
   const levelDots = Math.min(level, 20);
 
   return (
-    <Pressable
-      style={({ pressed }) => ({
+    <View
+      style={{
         marginHorizontal: T.space.lg,
         marginBottom: T.space.md,
         borderRadius: T.radius.md,
@@ -194,8 +208,7 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
         borderColor: T.border.default,
         backgroundColor: T.bg.overlay,
         overflow: "hidden",
-        opacity: pressed ? 0.88 : 1,
-      })}
+      }}
     >
       <Animated.View
         pointerEvents="none"
@@ -260,17 +273,36 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
           onPress={handleBuy}
           disabled={!canAfford || !tierUnlocked}
           style={({ pressed }) => ({
-            borderRadius: T.radius.sm,
+            borderRadius: T.radius.md,
             paddingHorizontal: T.space.xl,
             paddingVertical: T.space.md,
             backgroundColor: T.upgradeButtonBg(type, canAfford && tierUnlocked),
             borderWidth: 1,
-            borderColor: canAfford && tierUnlocked ? `${accent}44` : "transparent",
-            opacity: pressed ? 0.8 : 1,
+            borderColor: canAfford && tierUnlocked ? `${accent}66` : T.border.focus,
+            opacity: pressed ? 0.75 : 1,
+            transform: [{ scale: pressed ? 0.95 : 1 }],
+            ...(canAfford && tierUnlocked ? {
+              shadowColor: accent,
+              shadowOffset: { width: 0, height: 0 },
+              shadowOpacity: 0.35,
+              shadowRadius: 8,
+              elevation: 6,
+            } : {}),
+            minWidth: 88,
+            alignItems: "center" as const,
           })}
           accessibilityLabel={`Install ${title} for ${formatNumber(cost)} LoC`}
+          accessibilityRole="button"
         >
-          <Text style={{ fontFamily: T.mono, fontSize: T.font.sm + 1, color: canAfford ? "#fff" : T.text.muted, fontWeight: "600", textAlign: "center" }}>
+          <Text style={{
+            fontFamily: T.mono, fontSize: 9, fontWeight: "800",
+            color: canAfford && tierUnlocked ? accent : T.text.disabled,
+            letterSpacing: 2, textTransform: "uppercase", textAlign: "center",
+            marginBottom: 3,
+          }}>
+            {tierUnlocked ? "INSTALL" : "LOCKED"}
+          </Text>
+          <Text style={{ fontFamily: T.mono, fontSize: T.font.sm + 1, color: canAfford ? "#fff" : T.text.muted, fontWeight: "700", textAlign: "center" }}>
             {formatNumber(cost)}
           </Text>
           <Text style={{ fontFamily: T.mono, fontSize: T.font.xs, color: canAfford ? T.text.secondary : T.text.disabled, marginTop: 2, textAlign: "center" }}>
@@ -278,6 +310,6 @@ export const UpgradeCard: React.FC<UpgradeCardProps> = ({ type, title, unlocksAt
           </Text>
         </Pressable>
       </View>
-    </Pressable>
+    </View>
   );
 };

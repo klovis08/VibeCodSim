@@ -64,7 +64,7 @@ const CornerBrackets: React.FC = () => (
   </>
 );
 
-const PulsingCTA: React.FC = () => {
+const PulsingCTA: React.FC<{ onPress?: () => void }> = ({ onPress }) => {
   const pulseAnim = useRef(new Animated.Value(0.7)).current;
   useEffect(() => {
     const loop = Animated.loop(
@@ -78,19 +78,23 @@ const PulsingCTA: React.FC = () => {
   }, [pulseAnim]);
 
   return (
-    <Animated.View style={{
-      backgroundColor: "rgba(0,0,0,0.55)",
-      paddingHorizontal: T.space.lg,
-      paddingVertical: T.space.xs + 2,
-      borderRadius: 999,
-      borderWidth: 1,
-      borderColor: `${T.accent.blue}44`,
-      opacity: pulseAnim,
-    }}>
-      <Text style={{ color: T.accent.blue, fontWeight: "bold", letterSpacing: 3, fontSize: T.font.xs, fontFamily: T.mono }}>
-        TAP TO EXECUTE
-      </Text>
-    </Animated.View>
+    <Pressable onPress={onPress}>
+      <Animated.View style={{
+        backgroundColor: "rgba(0,0,0,0.55)",
+        paddingHorizontal: T.space.lg,
+        paddingVertical: T.space.xs + 2,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: `${T.accent.blue}44`,
+        opacity: pulseAnim,
+      }}>
+        <Text 
+          selectable={false}
+          style={{ color: T.accent.blue, fontWeight: "bold", letterSpacing: 3, fontSize: T.font.xs, fontFamily: T.mono, userSelect: "none" as any }}>
+          TAP TO EXECUTE
+        </Text>
+      </Animated.View>
+    </Pressable>
   );
 };
 
@@ -289,7 +293,7 @@ export const GraphicGamePanel: React.FC = () => {
           <View />
         )}
 
-        <PulsingCTA />
+        <PulsingCTA onPress={handleTap} />
       </View>
 
       {activeSparks.map((spark) => (
