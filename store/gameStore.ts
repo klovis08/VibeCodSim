@@ -50,7 +50,7 @@ interface MetaEffects {
   sparkChanceMultiplier: number;
   sparkRewardMultiplier: number;
   strainMultiplier: number;
-  cloudBurstDurationBonus: number;
+  cloudBurstMultiplierBonus: number;
 }
 
 export interface ActiveEvent {
